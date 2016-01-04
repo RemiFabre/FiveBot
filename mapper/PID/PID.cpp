@@ -17,16 +17,17 @@
  *    The parameters specified here are those for for which we can't set up 
  *    reliable defaults, so we need to have the user set them.
  ***************************************************************************/
-PID::PID(double* Input, double* Output, double* Setpoint,
+PID::PID(double* Input, double* Output, double* Setpoint, double* error,
         double Kp, double Ki, double Kd, int ControllerDirection)
 {
 	
     myOutput = Output;
     myInput = Input;
     mySetpoint = Setpoint;
+    myError = error;
 	inAuto = false;
 	
-	PID::SetOutputLimits(0, 255);				//default output limit corresponds to 
+	PID::SetOutputLimits(-255, 255);				//default output limit corresponds to 
 												//the arduino pwm limits
 
     SampleTime = 100;							//default Controller Sample Time is 0.1 seconds
@@ -44,7 +45,7 @@ PID::PID(double* Input, double* Output, double* Setpoint,
  *   pid Output needs to be computed.  returns true when the output is computed,
  *   false when nothing has been done.
  **********************************************************************************/ 
-double PID::Compute()
+bool PID::Compute()
 {
    if(!inAuto) return false;
    unsigned long now = millis();
@@ -53,14 +54,14 @@ double PID::Compute()
    {
       /*Compute all the working error variables*/
 	  double input = *myInput;
-      double error = *mySetpoint - input;
-      ITerm+= (ki * error);
+      *myError = *mySetpoint - input;
+      ITerm+= (ki * *myError);
       if(ITerm > outMax) ITerm= outMax;
       else if(ITerm < outMin) ITerm= outMin;
       double dInput = (input - lastInput);
  
       /*Compute PID Output*/
-      double output = kp * error + ITerm- kd * dInput;
+      double output = kp * *myError + ITerm- kd * dInput;
       
 	  if(output > outMax) output = outMax;
       else if(output < outMin) output = outMin;
@@ -69,9 +70,10 @@ double PID::Compute()
       /*Remember some variables for next time*/
       lastInput = input;
       lastTime = now;
-	  return error;
+    // Serial.println(*myError);
+	  return true;
    }
-   else return 0;
+   else return false;
 }
 
 
