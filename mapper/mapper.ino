@@ -33,8 +33,8 @@ MOTOR_PIN[MOTOR_NB] = {
 struct {
     double position;
     double target_position;
-    float speed;
-    float target_speed;
+    double speed;
+    double target_speed;
     int direction;
     int encoder_phase;
     double error; 
@@ -45,17 +45,17 @@ MOTOR_STATE[MOTOR_NB] = {
 
 
 PID MOTOR_PID[MOTOR_NB] = {
-    PID(&MOTOR_STATE[0].position, &MOTOR_STATE[0].cmd, &MOTOR_STATE[0].target_position, 
-        &MOTOR_STATE[0].error,0.15,0.2,0.005,DIRECT),
-    PID(&MOTOR_STATE[1].position, &MOTOR_STATE[1].cmd, &MOTOR_STATE[1].target_position,
+    PID(&MOTOR_STATE[0].speed, &MOTOR_STATE[0].cmd, &MOTOR_STATE[0].target_speed, 
+        &MOTOR_STATE[0].error,2,1,3,DIRECT),
+    PID(&MOTOR_STATE[1].speed, &MOTOR_STATE[1].cmd, &MOTOR_STATE[1].target_speed,
         &MOTOR_STATE[1].error,0.5,0,0,DIRECT),
-    PID(&MOTOR_STATE[2].position, &MOTOR_STATE[2].cmd, &MOTOR_STATE[2].target_position,
+    PID(&MOTOR_STATE[2].speed, &MOTOR_STATE[2].cmd, &MOTOR_STATE[2].target_speed,
         &MOTOR_STATE[2].error,0.5,0,0,DIRECT),
-    PID(&MOTOR_STATE[3].position, &MOTOR_STATE[3].cmd, &MOTOR_STATE[3].target_position,
+    PID(&MOTOR_STATE[3].speed, &MOTOR_STATE[3].cmd, &MOTOR_STATE[3].target_speed,
         &MOTOR_STATE[0].error,0.5,0,0,DIRECT)
     };
 
-    long t1 = 0;
+long t1 = 0;
 long t2 = 0;
 long t = 0;
 boolean bench = false;
@@ -107,25 +107,23 @@ void poll_encoders() {
 
 }
 
-void go_to_angle(int angle){
-    int val_max = 3072;
-    // int error = angle-MOTOR_STATE[0].position;
-    // int cmd = min(255, abs(error)/2);
-    MOTOR_STATE[1].target_position = angle;
-    MOTOR_PID[1].Compute();
-    analogWrite(MOTOR_PIN[1].speed, abs(MOTOR_STATE[1].cmd));
-    digitalWrite(MOTOR_PIN[1].direction, (MOTOR_STATE[1].error < 0) ? LOW : HIGH);
-    
-    // if(MOTOR_STATE[1].error !=0) Serial.println(MOTOR_STATE[1].error);
 
-}
+// Works with PID in POSITION !
+// void go_to_angle(int angle){
+//     MOTOR_STATE[1].target_position = angle;
+//     MOTOR_PID[1].Compute();
+//     analogWrite(MOTOR_PIN[1].speed, abs(MOTOR_STATE[1].cmd));
+//     digitalWrite(MOTOR_PIN[1].direction, (MOTOR_STATE[1].error < 0) ? LOW : HIGH);
+    
+//     // if(MOTOR_STATE[1].error !=0) Serial.println(MOTOR_STATE[1].error);
+// }
 
 // Set speed with PID, v in tr/s
 void set_speed(int motor, float v){
-
+    MOTOR_STATE[motor].target_speed = v;
     MOTOR_PID[motor].Compute();
 
-    analogWrite(MOTOR_PIN[motor].speed, MOTOR_STATE[motor].cmd);
+    analogWrite(MOTOR_PIN[motor].speed, abs(MOTOR_STATE[motor].cmd));
     digitalWrite(MOTOR_PIN[motor].direction, (v < 0) ? LOW : HIGH);
 }
 
@@ -221,8 +219,8 @@ void loop(){
      
      */
     poll_encoders();
-    go_to_angle(100);
-
+    set_speed(0,10);
+  
 }
 
 
