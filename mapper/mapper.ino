@@ -7,7 +7,16 @@
 #define MVT 0x01
 #define ENC 0x02
 
+#define M1 0
+#define M2 1
+#define M3 2
+#define M4 4
+ 
 #define MOTOR_NB 4
+#define SPEED_MEASURE_COUNT 5 
+
+#define CALC_SEQ(a,b) ((a^b)|b<<1)
+#define NEXT_INDEX(i) ((i+1)%SPEED_MEASURE_COUNT)
 
 struct {
     unsigned char direction;
@@ -17,94 +26,84 @@ struct {
 } 
 MOTOR_PIN[MOTOR_NB] = {
     {
-        4, 5, 2, 3        }
+        4, 5, 12, 13    }
     ,
     {
-        7, 6, A5, A4        }
+        7, 6, 2, 3      }
     , 
     {
-        8, 9, A0, A1        }
+        0, 0, 8, 9      }
     ,
     {
-        11, 10, 12, 13        }
+        0, 0, 10, 11    }
 };
 
 
 struct {
-    double position;
-    double target_position;
-    double speed;
-    double target_speed;
+    int position;
+    int target_position;
+    int speed;
+    int target_speed;
     int direction;
     int encoder_phase;
-    double error; 
-    double cmd;
+    int err_nb;
+    int error;
+    int cmd;
+    long time_hist[SPEED_MEASURE_COUNT] = {0};
+    int position_hist[SPEED_MEASURE_COUNT] = {0};
+    int index = 0;
 } 
-MOTOR_STATE[MOTOR_NB] = {
-    0};
+MOTOR_STATE[MOTOR_NB];
 
 
 PID MOTOR_PID[MOTOR_NB] = {
     PID(&MOTOR_STATE[0].speed, &MOTOR_STATE[0].cmd, &MOTOR_STATE[0].target_speed, 
         &MOTOR_STATE[0].error,2,1,3,DIRECT),
     PID(&MOTOR_STATE[1].speed, &MOTOR_STATE[1].cmd, &MOTOR_STATE[1].target_speed,
-        &MOTOR_STATE[1].error,0.5,0,0,DIRECT),
+        &MOTOR_STATE[1].error,2,1,3,DIRECT),
     PID(&MOTOR_STATE[2].speed, &MOTOR_STATE[2].cmd, &MOTOR_STATE[2].target_speed,
-        &MOTOR_STATE[2].error,0.5,0,0,DIRECT),
+        &MOTOR_STATE[2].error,2,1,3,DIRECT),
     PID(&MOTOR_STATE[3].speed, &MOTOR_STATE[3].cmd, &MOTOR_STATE[3].target_speed,
-        &MOTOR_STATE[0].error,0.5,0,0,DIRECT)
+        &MOTOR_STATE[0].error,2,1,3,DIRECT)
     };
 
-long t1 = 0;
-long t2 = 0;
-long t = 0;
-boolean bench = false;
-int ct = 0;
+long delta_t,delta_p;
 
-long t_read, t_set, t_enc;
 
-const unsigned short ROTARY_ENCODER_PHASE[2][2] = {
+// OBSOLETE
+/*const unsigned short ROTARY_ENCODER_PHASE[2][2] = {
     {
         0,1          }
     ,{
         3,2          }
-}; 
+};*/ 
 
 void poll_encoders() {
-
-    t_read = micros();
-    t_enc = t_read-t_set;
 
     for (int i = 0; i < 4; ++i) {
 
         const int a = digitalRead(MOTOR_PIN[i].enc_a);
         const int b = digitalRead(MOTOR_PIN[i].enc_b);
-        const int phase = ROTARY_ENCODER_PHASE[a][b];
+        const int phase = CALC_SEQ(a,b);
 
-        if (phase == ((MOTOR_STATE[i].encoder_phase + 1) % 4))
-            MOTOR_STATE[i].direction = 1;
-        else if (((phase + 1) % 4) == MOTOR_STATE[i].encoder_phase)
-            MOTOR_STATE[i].direction = -1;
-        else if (phase == MOTOR_STATE[i].encoder_phase)
-            MOTOR_STATE[i].direction = 0;
-        else {
-            //read error ? should not happen, and therefore will ;)
-            /*Serial.print("Encoder read error, phase ");
-             		  Serial.print(MOTOR_STATE[i].encoder_phase);
-             		  Serial.print(" --> ");
-             		  Serial.print(phase);
-             		  Serial.print(" wheel: ");
-             		  Serial.println(i);*/
-            MOTOR_STATE[i].error++;
-            MOTOR_STATE[i].direction = 0;
-        }
+        // Calcul de la direction
+        const int direction = (phase - MOTOR_STATE[i].encoder_phase + 4) % 4;
+        if(direction != 2)
+            MOTOR_STATE[i].direction = direction;
+        else
+            ++MOTOR_STATE[i].err_nb;
         MOTOR_STATE[i].encoder_phase = phase;
         MOTOR_STATE[i].position += MOTOR_STATE[i].direction;
-        MOTOR_STATE[i].speed = MOTOR_STATE[i].position / t_enc;
+        
+        // Calcul de la vitesse
+        MOTOR_STATE[i].time_hist[MOTOR_STATE[i].index] = micros();
+        MOTOR_STATE[i].position_hist[MOTOR_STATE[i].index] = MOTOR_STATE[i].position;
+        delta_t = MOTOR_STATE[i].time_hist[MOTOR_STATE[i].index] - MOTOR_STATE[i].time_hist[NEXT_INDEX(MOTOR_STATE[i].index)];
+        delta_p = MOTOR_STATE[i].position_hist[MOTOR_STATE[i].index] - MOTOR_STATE[i].position_hist[NEXT_INDEX(MOTOR_STATE[i].index)];
+        MOTOR_STATE[i].speed = delta_p / delta_t;
+        
+        MOTOR_STATE[i].index = NEXT_INDEX(MOTOR_STATE[i].index);
     }
-
-    t_set = micros();
-
 }
 
 
@@ -122,7 +121,7 @@ void poll_encoders() {
 void set_speed(int motor, float v){
     MOTOR_STATE[motor].target_speed = v;
     MOTOR_PID[motor].Compute();
-
+    // MOTOR_STATE[motor].cmd = v;
     analogWrite(MOTOR_PIN[motor].speed, abs(MOTOR_STATE[motor].cmd));
     digitalWrite(MOTOR_PIN[motor].direction, (v < 0) ? LOW : HIGH);
 }
@@ -159,67 +158,8 @@ void setup(){
 
 void loop(){
 
-    /*
-  t1 = micros();
-     
-     poll_encoders();
-     
-     if(Serial.available()){
-     String cmd = Serial.readStringUntil('\n'); 
-     if(cmd == "move"){
-     long v[4]= {
-     0      };
-     for(int i=0; i < 4; i++){
-     v[i] = Serial.parseInt();
-     //Serial.println(v[i]);        
-     }
-     
-     for (int i = 0; i < 4; i++)
-     {
-     analogWrite(MOTOR_PIN[i].speed,abs(v[i]));
-     digitalWrite(MOTOR_PIN[i].direction, (v[i] < 0) ? LOW : HIGH);
-     }
-     }
-     else if(cmd == "encoders"){
-     for(int i=0; i < 4; i++){
-     Serial.println(MOTOR_STATE[i].position);        
-     }    
-     }
-     else if(cmd == "errors"){
-     for(int i=0; i < 4; i++){
-     Serial.println(MOTOR_STATE[i].error);        
-     }    
-     }
-     else if(cmd == "bench"){
-     bench = !bench; 
-     }
-     else if (cmd == "odometry") {
-     float w_r[] = {
-     MOTOR_STATE[0].position/3072.0,
-     MOTOR_STATE[1].position/3072.0,
-     MOTOR_STATE[2].position/3072.0,
-     MOTOR_STATE[3].position/3072.0,
-     };
-     float xyw[3];
-     get_vx_vy_w(w_r, xyw);
-     Serial.println(xyw[0]);
-     Serial.println(xyw[1]);
-     Serial.println(xyw[2]);
-     }
-     }
-     
-     t2 = micros();
-     t = max(t2-t1, t);
-     ct++;
-     if(bench && (ct > 10000)){
-     Serial.println(t);
-     ct = 0;
-     t = 0;
-     }
-     
-     */
     poll_encoders();
-    set_speed(0,10);
+    set_speed(M2,50);
   
 }
 
