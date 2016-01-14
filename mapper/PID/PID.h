@@ -14,6 +14,8 @@ class PID
   #define DIRECT  0
   #define REVERSE  1
 
+  #define FACTOR 10
+
   //commonly used functions **************************************************************************
     PID(int*,int*, int*, int*,       // * constructor.  links the PID to the Input, Output, and 
         int, int, int, int);     //   Setpoint.  Initial tuning parameters are also set here

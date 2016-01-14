@@ -1,4 +1,8 @@
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
 #include <PID.h>
+#include <Sabertooth.h>
 
 
 
@@ -10,12 +14,12 @@
 #define M1 0
 #define M2 1
 #define M3 2
-#define M4 4
+#define M4 3
  
 #define MOTOR_NB 4
-#define SPEED_MEASURE_COUNT 5 
+#define SPEED_MEASURE_COUNT 30
+#define ENC_RATIO 3072
 
-#define CALC_SEQ(a,b) ((a^b)|b<<1)
 #define NEXT_INDEX(i) ((i+1)%SPEED_MEASURE_COUNT)
 
 struct {
@@ -26,17 +30,20 @@ struct {
 } 
 MOTOR_PIN[MOTOR_NB] = {
     {
-        4, 5, 12, 13    }
+        4, 5, PB4, PB5 /*12, 13*/    }
     ,
     {
-        7, 6, 2, 3      }
+        -1, -1, PD2, PD3 /*2, 3*/      }
     , 
     {
-        0, 0, 8, 9      }
+        -1, -1, PB0, PB1/*8, 9*/      }
     ,
     {
-        0, 0, 10, 11    }
+        7, 6, PB2, PB3 /*10, 11*/    }
 };
+
+Sabertooth ST_M2(128); 
+Sabertooth ST_M3(129);  
 
 
 struct {
@@ -57,7 +64,7 @@ MOTOR_STATE[MOTOR_NB];
 
 
 PID MOTOR_PID[MOTOR_NB] = {
-    PID(&MOTOR_STATE[0].speed, &MOTOR_STATE[0].cmd, &MOTOR_STATE[0].target_speed, 
+    PID(&MOTOR_STATE[0].position, &MOTOR_STATE[0].cmd, &MOTOR_STATE[0].target_position, 
         &MOTOR_STATE[0].error,2,1,3,DIRECT),
     PID(&MOTOR_STATE[1].speed, &MOTOR_STATE[1].cmd, &MOTOR_STATE[1].target_speed,
         &MOTOR_STATE[1].error,2,1,3,DIRECT),
@@ -70,60 +77,153 @@ PID MOTOR_PID[MOTOR_NB] = {
 long delta_t,delta_p;
 
 
-// OBSOLETE
-/*const unsigned short ROTARY_ENCODER_PHASE[2][2] = {
-    {
-        0,1          }
-    ,{
-        3,2          }
-};*/ 
+ISR(PCINT2_vect){ 
 
-void poll_encoders() {
+    int i = M2;
+
+    const int a = (PIND & _BV(MOTOR_PIN[i].enc_a) || 0); //digitalRead(MOTOR_PIN[i].enc_a);
+    const int b = (PIND & _BV(MOTOR_PIN[i].enc_b) || 0); //digitalRead(MOTOR_PIN[i].enc_b);
+
+    const int phase = (a ^ b) | b << 1;
+
+    // Calcul de la direction
+    const int direction = ((phase - MOTOR_STATE[i].encoder_phase + 5) % 4) -1;
+    if(direction != 2){
+        MOTOR_STATE[i].direction = direction;
+    }
+    else{
+        ++MOTOR_STATE[i].err_nb;
+    }
+    MOTOR_STATE[i].encoder_phase = phase;
+    MOTOR_STATE[i].position += MOTOR_STATE[i].direction;
+
+}
+
+ISR(PCINT0_vect){ 
 
     for (int i = 0; i < 4; ++i) {
+        if(i == 2){
+            continue;
+        }
 
-        const int a = digitalRead(MOTOR_PIN[i].enc_a);
-        const int b = digitalRead(MOTOR_PIN[i].enc_b);
-        const int phase = CALC_SEQ(a,b);
+        const int a = (PINB & _BV(MOTOR_PIN[i].enc_a) || 0); //digitalRead(MOTOR_PIN[i].enc_a);
+        const int b = (PINB & _BV(MOTOR_PIN[i].enc_b) || 0); //digitalRead(MOTOR_PIN[i].enc_b);
+
+        const int phase = (a ^ b) | b << 1;
 
         // Calcul de la direction
-        const int direction = (phase - MOTOR_STATE[i].encoder_phase + 4) % 4;
-        if(direction != 2)
+        const int direction = ((phase - MOTOR_STATE[i].encoder_phase + 5) % 4) -1;
+        if(direction != 2){
             MOTOR_STATE[i].direction = direction;
-        else
+        }
+        else{
             ++MOTOR_STATE[i].err_nb;
+        }
         MOTOR_STATE[i].encoder_phase = phase;
         MOTOR_STATE[i].position += MOTOR_STATE[i].direction;
+    }
+
+}
+
+
+void poll_encoders() {
+    static int skip = 0;
+    skip = (skip + 1) % 10000;
+
+    for (int i = 0; i < 1; ++i) {
+
+        const int a = (PINB & _BV(MOTOR_PIN[i].enc_a) || 0); //digitalRead(MOTOR_PIN[i].enc_a);
+        const int b = (PINB & _BV(MOTOR_PIN[i].enc_b) || 0); //digitalRead(MOTOR_PIN[i].enc_b);
+
+        const int phase = (a ^ b) | b << 1;
+
+        // Calcul de la direction
+        const int direction = ((phase - MOTOR_STATE[i].encoder_phase + 5) % 4) -1;
+        if(direction != 2){
+            MOTOR_STATE[i].direction = direction;
+        }
+        else{
+            ++MOTOR_STATE[i].err_nb;
+        }
+        MOTOR_STATE[i].encoder_phase = phase;
+        MOTOR_STATE[i].position += MOTOR_STATE[i].direction;
+
+        if (!skip) {
+            Serial.print(" dir=");
+            Serial.print(MOTOR_STATE[i].direction);
+            Serial.print(" pos=");
+            Serial.print(MOTOR_STATE[i].position);
+            Serial.print(" err=");
+            Serial.print(MOTOR_STATE[i].err_nb);
+            // if (i < 3)
+            //     Serial.print(" ");
+            // else
+                Serial.println();
+        }
         
         // Calcul de la vitesse
+        /*
         MOTOR_STATE[i].time_hist[MOTOR_STATE[i].index] = micros();
         MOTOR_STATE[i].position_hist[MOTOR_STATE[i].index] = MOTOR_STATE[i].position;
         delta_t = MOTOR_STATE[i].time_hist[MOTOR_STATE[i].index] - MOTOR_STATE[i].time_hist[NEXT_INDEX(MOTOR_STATE[i].index)];
         delta_p = MOTOR_STATE[i].position_hist[MOTOR_STATE[i].index] - MOTOR_STATE[i].position_hist[NEXT_INDEX(MOTOR_STATE[i].index)];
-        MOTOR_STATE[i].speed = delta_p / delta_t;
+        
+        long dp = (((long)delta_p)*1000000*100);
+        long dt = (((long)delta_t)*ENC_RATIO);
+        MOTOR_STATE[i].speed =  dp / dt;
+
+        // Serial.print("dp : ");
+        // Serial.println(dp);
+        // Serial.print("dt : ");
+        // Serial.println(dt);
+        // Serial.print("speed : ");
+        if(MOTOR_STATE[M1].speed != 0) Serial.println(MOTOR_STATE[M1].speed);
+
         
         MOTOR_STATE[i].index = NEXT_INDEX(MOTOR_STATE[i].index);
+        */
     }
+
 }
 
 
-// Works with PID in POSITION !
+// // Works with PID in POSITION !
 // void go_to_angle(int angle){
-//     MOTOR_STATE[1].target_position = angle;
-//     MOTOR_PID[1].Compute();
-//     analogWrite(MOTOR_PIN[1].speed, abs(MOTOR_STATE[1].cmd));
-//     digitalWrite(MOTOR_PIN[1].direction, (MOTOR_STATE[1].error < 0) ? LOW : HIGH);
-    
-//     // if(MOTOR_STATE[1].error !=0) Serial.println(MOTOR_STATE[1].error);
+//     MOTOR_STATE[M1].target_position = angle;
+//     MOTOR_PID[M1].Compute();
+//     analogWrite(MOTOR_PIN[M1].speed, abs(MOTOR_STATE[M1].cmd));
+//     digitalWrite(MOTOR_PIN[M1].direction, (MOTOR_STATE[M1].error < 0) ? LOW : HIGH);
+
+//     // if(MOTOR_STATE[1].error !=0) Serial.println(MOTOR_STATE[M1].error);
 // }
 
-// Set speed with PID, v in tr/s
-void set_speed(int motor, float v){
+// Set speed with PID, v in 10^(-2)tr/s
+void set_speed(int motor, int v){
     MOTOR_STATE[motor].target_speed = v;
-    MOTOR_PID[motor].Compute();
-    // MOTOR_STATE[motor].cmd = v;
-    analogWrite(MOTOR_PIN[motor].speed, abs(MOTOR_STATE[motor].cmd));
-    digitalWrite(MOTOR_PIN[motor].direction, (v < 0) ? LOW : HIGH);
+    // MOTOR_PID[motor].Compute();
+    MOTOR_STATE[motor].cmd = v;
+
+    // Serial.println(MOTOR_STATE[motor].speed);
+
+    switch (motor) {
+        case M1:
+            analogWrite(MOTOR_PIN[motor].speed, abs(MOTOR_STATE[motor].cmd));
+            digitalWrite(MOTOR_PIN[motor].direction, (v < 0) ? LOW : HIGH);
+            break;
+        case M2:
+            ST_M2.motor(MOTOR_STATE[motor].cmd);
+            break;
+        case M3:
+            ST_M3.motor(MOTOR_STATE[motor].cmd);
+            break;
+        case M4:
+            analogWrite(MOTOR_PIN[motor].speed, abs(MOTOR_STATE[motor].cmd)); 
+            digitalWrite(MOTOR_PIN[motor].direction, (v < 0) ? LOW : HIGH);
+            break;
+        default:
+            break;
+    }
+
 }
 
 
@@ -136,31 +236,99 @@ void get_vx_vy_w(float w[4], float xyw[4]) {
 
 ///*********************    SETUP    *********************///  
 void setup_motor_pins() {
-    for (int i = 0; i < 4; ++i) {
-        pinMode(MOTOR_PIN[i].direction, OUTPUT);
-        pinMode(MOTOR_PIN[i].speed, OUTPUT);
-        pinMode(MOTOR_PIN[i].enc_a, INPUT);
-        pinMode(MOTOR_PIN[i].enc_b, INPUT);
-    }
+
+    // 1 -> output
+    // 0 -> input
+    DDRB = 0;
+    DDRD |= (0 << DDD2)|(0 << DDD3)|(1 << DDD4)|(1 << DDD5)|(1 << DDD6)|(1 << DDD7);
+
+
+    // for (int i = 1; i < 4; ++i) {
+    //     // pinMode(MOTOR_PIN[i].direction, OUTPUT);
+    //     // pinMode(MOTOR_PIN[i].speed, OUTPUT);
+    //     // pinMode(MOTOR_PIN[i].enc_a, INPUT);
+    //     // pinMode(MOTOR_PIN[i].enc_b, INPUT);
+    // }
 }
+
+void Interrupt_Init(){
+    sei();                      // Enable interruptions globally
+
+    PCICR = _BV(PCIE0)|_BV(PCIE2);         // Enable Pin Change Interrupt on Pin Change Mask 2
+    // Enable interrupt on pins 8-13 
+    PCMSK0 = 0|_BV(PCINT0)|_BV(PCINT1)|_BV(PCINT2)|_BV(PCINT3)|_BV(PCINT4)|_BV(PCINT5); 
+    // Enable interrupt on pins 2-3
+    PCMSK2 = 0|_BV(PCINT18)|_BV(PCINT19);
+}
+
+long t1;
+long t2;
 
 void setup(){
     setup_motor_pins();
-    Serial.begin(115200);
+    Interrupt_Init();
+
+    SabertoothTXPinSerial.begin(19200);
+    ST_M2.autobaud();
+    ST_M3.autobaud();
+
+    Serial.begin(19200);
     Serial.setTimeout(10000);  
+    Serial.println("SETUP");
 
     for(int i=0; i<MOTOR_NB; i++){
         MOTOR_PID[i].SetMode(AUTOMATIC);
     }
+
+    set_speed(M1,50);
+    set_speed(M2,50);
+    set_speed(M3,-50);
+    set_speed(M4,-50);
+
+    // t1 = millis();
 }
 
 
+static int skip = 0;
 
 void loop(){
+    skip = (skip + 1) % 10000;
 
-    poll_encoders();
-    set_speed(M2,50);
-  
+    // poll_encoders();
+    
+    t2 = millis();
+
+    // if(t2-t1 > 10000){
+    //     set_speed(M1,50);
+    //     set_speed(M2,50);
+    //     set_speed(M3,-50);
+    //     set_speed(M4,-50);
+    // }
+    // else if(t2-t1 > 5000){
+    //     set_speed(M1, -50);
+    //     set_speed(M2, -50);   
+    //     set_speed(M3, 50);   
+    //     set_speed(M4, 50);           
+    // }
+
+    if (!skip) {
+        for(int i = 0; i < 4; i++){
+            Serial.print(" dir=");
+            Serial.print(MOTOR_STATE[i].direction);
+            Serial.print(" pos=");
+            Serial.print(MOTOR_STATE[i].position);
+            Serial.print(" err=");
+            Serial.print(MOTOR_STATE[i].err_nb);
+            if (i < 3){
+                Serial.println();
+            }
+            else{
+                Serial.println();
+                Serial.println();
+            }
+        }
+    }
+
 }
 
 

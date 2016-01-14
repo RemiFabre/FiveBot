@@ -21,21 +21,21 @@ PID::PID(int* Input, int* Output, int* Setpoint, int* error,
         int Kp, int Ki, int Kd, int ControllerDirection)
 {
 	
-    myOutput = Output;
-    myInput = Input;
-    mySetpoint = Setpoint;
-    myError = error;
+  myOutput = Output;
+  myInput = Input;
+  mySetpoint = Setpoint;
+  myError = error;
 	inAuto = false;
 	
-	PID::SetOutputLimits(-255, 255);				//default output limit corresponds to 
-												//the arduino pwm limits
+	PID::SetOutputLimits(-255*FACTOR, 255*FACTOR);				//default output limit corresponds to 
+												                  //the arduino pwm limits
 
-    SampleTime = 100;							//default Controller Sample Time is 0.1 seconds
+  SampleTime = 100;							//default Controller Sample Time is 0.0001 seconds
 
-    PID::SetControllerDirection(ControllerDirection);
-    PID::SetTunings(Kp, Ki, Kd);
+  PID::SetControllerDirection(ControllerDirection);
+  PID::SetTunings(Kp, Ki, Kd);
 
-    lastTime = millis()-SampleTime;				
+  lastTime = micros()-SampleTime;				
 }
  
  
@@ -48,13 +48,13 @@ PID::PID(int* Input, int* Output, int* Setpoint, int* error,
 bool PID::Compute()
 {
    if(!inAuto) return false;
-   unsigned long now = millis();
+   unsigned long now = micros();
    unsigned long timeChange = (now - lastTime);
    if(timeChange>=SampleTime)
    {
       /*Compute all the working error variables*/
-	  int input = *myInput;
-      *myError = *mySetpoint - input;
+	  int input = *myInput*FACTOR;
+      *myError = (*mySetpoint*FACTOR) - input;
       ITerm+= (ki * *myError);
       if(ITerm > outMax) ITerm= outMax;
       else if(ITerm < outMin) ITerm= outMin;
@@ -65,7 +65,7 @@ bool PID::Compute()
       
 	  if(output > outMax) output = outMax;
       else if(output < outMin) output = outMin;
-	  *myOutput = output;
+	  *myOutput = (int) output/FACTOR;
 	  
       /*Remember some variables for next time*/
       lastInput = input;
@@ -88,7 +88,7 @@ void PID::SetTunings(int Kp, int Ki, int Kd)
  
    dispKp = Kp; dispKi = Ki; dispKd = Kd;
    
-   double SampleTimeInSec = ((double)SampleTime)/1000;  
+   double SampleTimeInSec = ((double)SampleTime)/1000000;  
    kp = Kp;
    ki = Ki * SampleTimeInSec;
    kd = Kd / SampleTimeInSec;
