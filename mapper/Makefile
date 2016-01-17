@@ -14,7 +14,7 @@ LIBS=PID/PID.cpp
 
 TTY=/dev/ttyUSB0
 
-all: upload serial
+all: upload clean serial
 
 upload: $(OBJ).hex
 	$(ARDUINO_AVRDUDE) -C $(ARDUINO_PATH)/hardware/tools/avrdude.conf -p atmega328p -P $(TTY) -b 57600 -c arduino -D -U flash:w:$<:i
