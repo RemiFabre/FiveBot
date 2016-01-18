@@ -9,7 +9,7 @@ ARDUINO_SRC=`find $(ARDUINO_PATH)/hardware/arduino/cores/arduino/ -name "*.c" -o
 
 OBJ=mapper
 SRC=$(OBJ).cpp
-CFLAGS=-Wall -IPID
+CFLAGS=-std=c++11 -Wall -IPID
 LIBS=PID/PID.cpp
 
 TTY=/dev/ttyUSB0

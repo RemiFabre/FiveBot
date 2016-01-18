@@ -2,14 +2,24 @@
 #include <avr/interrupt.h>
 #include <Arduino.h>
 #include <PID.h>
+// #include <mapper.h>
 
-enum { M1, M2, M3, M4, MOTOR_COUNT };
+
+/***** Constants definitions *****/
 
 #define BAUDRATE 2000000
 
 #define SPEED_HIST_SIZE (1 << 5)
 #define NEXT_SPEED_INDEX(i) ((i + 1) & (SPEED_HIST_SIZE - 1))
 #define ENC_RATIO 3072
+#define FACTOR 100
+
+#define PID_ON
+
+
+/***** Structures definitions *****/
+
+enum { M1, M2, M3, M4, MOTOR_COUNT };
 
 float xyw[] = { 0, 0, 0 };
 
@@ -22,16 +32,13 @@ struct MotorPin {
     {  7,   6, PB4, PB5 }, /* 12, 13 */
 };
 
-
 struct MotorState {
     int position, target_position, speed, target_speed,
         direction, encoder_phase, err_nb,
         error, cmd;
-    long time_hist[SPEED_HIST_SIZE];
-    int position_hist[SPEED_HIST_SIZE];
-    int index;
+    int direction_hist[SPEED_HIST_SIZE];
+    int direction_sum, direction_index;
 } MOTOR_STATE[MOTOR_COUNT] = {0};
-
 
 PID MOTOR_PID[MOTOR_COUNT] = {
     PID(
@@ -40,7 +47,8 @@ PID MOTOR_PID[MOTOR_COUNT] = {
         &MOTOR_STATE[0].target_speed,
         &MOTOR_STATE[0].error,
         2, 1, 3,
-        DIRECT
+        DIRECT, 
+        FACTOR
     ),
     PID(
         &MOTOR_STATE[1].speed,
@@ -48,7 +56,8 @@ PID MOTOR_PID[MOTOR_COUNT] = {
         &MOTOR_STATE[1].target_speed,
         &MOTOR_STATE[1].error,
         2, 1, 3,
-        DIRECT
+        DIRECT,
+        FACTOR
     ),
     PID(
         &MOTOR_STATE[2].speed,
@@ -56,7 +65,8 @@ PID MOTOR_PID[MOTOR_COUNT] = {
         &MOTOR_STATE[2].target_speed,
         &MOTOR_STATE[2].error,
         2, 1, 3,
-        DIRECT
+        DIRECT,
+        FACTOR
     ),
     PID(
         &MOTOR_STATE[3].speed,
@@ -64,9 +74,12 @@ PID MOTOR_PID[MOTOR_COUNT] = {
         &MOTOR_STATE[3].target_speed,
         &MOTOR_STATE[0].error,
         2, 1, 3,
-        DIRECT
+        DIRECT,
+        FACTOR
     ),
 };
+
+
 
 inline void readEncoder(int motor, char port) {
     const char a = true and port & _BV(MOTOR_PIN[motor].enc_a);
@@ -81,7 +94,15 @@ inline void readEncoder(int motor, char port) {
     MOTOR_STATE[motor].position += MOTOR_STATE[motor].direction;
 }
 
-ISR(PCINT0_vect){
+void computeEncSpeed(int motor){
+    auto& m(MOTOR_STATE[motor]);
+    m.direction_sum -= m.direction_hist[m.direction_index];
+    m.direction_sum += (m.direction_hist[m.direction_index] = m.direction);
+    m.direction_index = NEXT_SPEED_INDEX(m.direction_index);
+    m.speed =  m.direction_sum;
+}
+
+ISR(PCINT0_vect) {
     readEncoder(M4, PINB);
 }
 
@@ -94,9 +115,25 @@ ISR(PCINT2_vect) {
     readEncoder(M1, PIND);
 }
 
+ISR(TIMER1_COMPA_vect){
+    // readEncoder(M1, PIND);
+    // readEncoder(M2, PINC);
+    // readEncoder(M3, PINC);
+    // readEncoder(M4, PINB);
+    Serial.print('.');
+    for(int motor = 0; motor < 4; ++motor) {  
+        computeEncSpeed(motor);
+        MOTOR_STATE[motor].direction = 0;
+    }
+}
+
 void setMotorSpeed(int motor, int v) {
     MOTOR_STATE[motor].target_speed = v;
-    MOTOR_STATE[motor].cmd = v; // MOTOR_PID[motor].Compute();
+    #ifdef PID_ON
+    MOTOR_PID[motor].Compute();
+    #else
+    MOTOR_STATE[motor].cmd = v;
+    #endif  
     analogWrite(MOTOR_PIN[motor].speed, abs(MOTOR_STATE[motor].cmd));
     digitalWrite(MOTOR_PIN[motor].direction, v < 0 ? LOW : HIGH);
 }
@@ -151,6 +188,16 @@ void setupPID() {
         MOTOR_PID[i].SetMode(AUTOMATIC);
 }
 
+void setupTimer(){
+    //Timer interrupt every 1,28ms
+    OCR1A = 40000;
+    TIMSK1 |= _BV(OCIE1A);
+    //Set interrupt on compare match
+    TCCR1A = _BV(WGM12) | _BV(CS12)| _BV(CS10);
+    // Mode 4, CTC on OCR1A
+    // set prescaler to 1024 and start the timer
+}
+
 void debugSetMotorsForward() {
     const char speed = 50;
     setMotorSpeed(M1, speed);
@@ -162,13 +209,14 @@ void debugSetMotorsForward() {
 void setup() {
     setupSerial();
     setupMotorPins();
-    //setupPID();
+    setupPID();
     setupInterrupts();
+    setupTimer();
 
     debugSetMotorsForward();
 }
 
-void printWheelPositions() {
+void printEncoders() {
     Serial.print("wheels");
     for(int i = 0; i < 4; ++i) {
         Serial.print(" ");
@@ -187,9 +235,22 @@ void printOdometry() {
     Serial.println();
 }
 
+void printSpeeds() {
+    Serial.print("speeds");
+    for(int i = 0; i < 4; ++i) {
+        Serial.print(" ");
+        Serial.print(MOTOR_STATE[i].speed);
+    }
+    Serial.println();
+}
+
+
 void loop() {
     static int skip = 0;
     skip = (skip + 1) % 10000;
-    if (!skip)
+    if (!skip) {
+        printEncoders();
         printOdometry();
+        printSpeeds();
+    }
 }
