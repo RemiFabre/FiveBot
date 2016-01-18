@@ -11,6 +11,8 @@ enum { M1, M2, M3, M4, MOTOR_COUNT };
 #define NEXT_SPEED_INDEX(i) ((i + 1) & (SPEED_HIST_SIZE - 1))
 #define ENC_RATIO 3072
 
+float xyw[] = { 0, 0, 0 };
+
 struct MotorPin {
     unsigned char direction, speed, enc_a, enc_b;
 } MOTOR_PIN[MOTOR_COUNT] = {
@@ -35,7 +37,7 @@ PID MOTOR_PID[MOTOR_COUNT] = {
     PID(
         &MOTOR_STATE[0].speed,
         &MOTOR_STATE[0].cmd,
-        &MOTOR_STATE[0].target_speed, 
+        &MOTOR_STATE[0].target_speed,
         &MOTOR_STATE[0].error,
         2, 1, 3,
         DIRECT
@@ -79,7 +81,7 @@ inline void readEncoder(int motor, char port) {
     MOTOR_STATE[motor].position += MOTOR_STATE[motor].direction;
 }
 
-ISR(PCINT0_vect){ 
+ISR(PCINT0_vect){
     readEncoder(M4, PINB);
 }
 
@@ -99,11 +101,20 @@ void setMotorSpeed(int motor, int v) {
     digitalWrite(MOTOR_PIN[motor].direction, v < 0 ? LOW : HIGH);
 }
 
-void getOdometryFromEncoders(float w[4], float xyw[4]) {
+void updateOdometryFromEncoders() {
+    static float w[] = { 0, 0, 0, 0 };
+    for (int i = 0; i < 4; ++i)
+        w[i] += MOTOR_STATE[i].position;
     const float R = 9.4 / 2, L1 = 15, L2 = 15;
-    xyw[0] = R / 4 * (w[0] + w[1] - w[2] - w[3]);
-    xyw[1] = R / 4 * (w[0] - w[1] - w[2] + w[3]);
-    xyw[2] = R / 4 / (L1 + L2) * (-w[0] + w[1] - w[2] + w[3]);
+    xyw[0] += R / 4 * (w[0] + w[1] - w[2] - w[3]);
+    xyw[1] += R / 4 * (w[0] - w[1] - w[2] + w[3]);
+    xyw[2] += R / 4 / (L1 + L2) * (-w[0] + w[1] - w[2] + w[3]);
+    for (int i = 0; i < 4; ++i) {
+        int& pos(MOTOR_STATE[i].position);
+        const int sign = pos < 0 ? -1 : 1;
+        pos = sign * ((sign * pos) % ENC_RATIO);
+        w[i] = -pos;
+    }
 }
 
 void setupMotorPins() {
@@ -117,13 +128,13 @@ void setupMotorPins() {
 
 void setupInterrupts() {
     // Enable interrupts globally
-    sei();                      
+    sei();
     // Enable Pin Change Interrupt
     PCICR = _BV(PCIE0)|_BV(PCIE1)|_BV(PCIE2);
 
-    // Enable interrupt on pins 12-13 
-    PCMSK0 = _BV(PCINT4)|_BV(PCINT5); 
-    // Enable interrupt on pins A0-A3 
+    // Enable interrupt on pins 12-13
+    PCMSK0 = _BV(PCINT4)|_BV(PCINT5);
+    // Enable interrupt on pins A0-A3
     PCMSK1 = _BV(PCINT8)|_BV(PCINT9)|_BV(PCINT10)|_BV(PCINT11);
     // Enable interrupt on pins 2-3
     PCMSK2 = _BV(PCINT18)|_BV(PCINT19);
@@ -131,7 +142,7 @@ void setupInterrupts() {
 
 void setupSerial() {
     Serial.begin(BAUDRATE);
-    Serial.setTimeout(10000);  
+    Serial.setTimeout(10000);
     Serial.println("SETUP");
 }
 
@@ -157,14 +168,21 @@ void setup() {
     debugSetMotorsForward();
 }
 
-void printEncoders() {
+void printWheelPositions() {
+    Serial.print("wheels");
     for(int i = 0; i < 4; ++i) {
-        Serial.print(" dir=");
-        Serial.print(MOTOR_STATE[i].direction);
-        Serial.print(" pos=");
+        Serial.print(" ");
         Serial.print(MOTOR_STATE[i].position);
-        Serial.print(" err=");
-        Serial.println(MOTOR_STATE[i].err_nb);
+    }
+    Serial.println();
+}
+
+void printOdometry() {
+    updateOdometryFromEncoders();
+    Serial.print("xyw");
+    for (int i = 0; i < 3; ++i) {
+        Serial.print(" ");
+        Serial.print(xyw[i]);
     }
     Serial.println();
 }
@@ -173,5 +191,5 @@ void loop() {
     static int skip = 0;
     skip = (skip + 1) % 10000;
     if (!skip)
-        printEncoders();
+        printOdometry();
 }
