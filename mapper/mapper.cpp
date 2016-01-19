@@ -9,7 +9,7 @@
 
 #define BAUDRATE 2000000
 
-#define SPEED_HIST_SIZE (1 << 5)
+#define SPEED_HIST_SIZE (1 << 7)
 #define NEXT_SPEED_INDEX(i) ((i + 1) & (SPEED_HIST_SIZE - 1))
 #define ENC_RATIO 3072
 #define FACTOR 100
@@ -116,15 +116,12 @@ ISR(PCINT2_vect) {
 }
 
 ISR(TIMER1_COMPA_vect){
-    // readEncoder(M1, PIND);
-    // readEncoder(M2, PINC);
-    // readEncoder(M3, PINC);
-    // readEncoder(M4, PINB);
-    Serial.print('.');
-    for(int motor = 0; motor < 4; ++motor) {  
-        computeEncSpeed(motor);
-        MOTOR_STATE[motor].direction = 0;
-    }
+    // for(int motor = 0; motor < 4; ++motor) {  
+    //     computeEncSpeed(motor);
+    //     MOTOR_STATE[motor].direction = 0;
+    // }
+    computeEncSpeed(M3);
+
 }
 
 void setMotorSpeed(int motor, int v) {
@@ -164,8 +161,6 @@ void setupMotorPins() {
 }
 
 void setupInterrupts() {
-    // Enable interrupts globally
-    sei();
     // Enable Pin Change Interrupt
     PCICR = _BV(PCIE0)|_BV(PCIE1)|_BV(PCIE2);
 
@@ -175,6 +170,9 @@ void setupInterrupts() {
     PCMSK1 = _BV(PCINT8)|_BV(PCINT9)|_BV(PCINT10)|_BV(PCINT11);
     // Enable interrupt on pins 2-3
     PCMSK2 = _BV(PCINT18)|_BV(PCINT19);
+
+    // Enable interrupts globally
+    sei();
 }
 
 void setupSerial() {
@@ -189,13 +187,14 @@ void setupPID() {
 }
 
 void setupTimer(){
-    //Timer interrupt every 1,28ms
-    OCR1A = 40000;
-    TIMSK1 |= _BV(OCIE1A);
     //Set interrupt on compare match
-    TCCR1A = _BV(WGM12) | _BV(CS12)| _BV(CS10);
     // Mode 4, CTC on OCR1A
     // set prescaler to 1024 and start the timer
+    TIMSK1 = _BV(OCIE1A);
+    TCCR1A = 0;
+    TCCR1B = _BV(WGM12) | _BV(CS12) | _BV(CS10);
+    //Timer interrupt every 12.8ms
+    OCR1A = 200;
 }
 
 void debugSetMotorsForward() {
@@ -210,8 +209,8 @@ void setup() {
     setupSerial();
     setupMotorPins();
     setupPID();
-    setupInterrupts();
     setupTimer();
+    setupInterrupts();
 
     debugSetMotorsForward();
 }
@@ -221,6 +220,15 @@ void printEncoders() {
     for(int i = 0; i < 4; ++i) {
         Serial.print(" ");
         Serial.print(MOTOR_STATE[i].position);
+    }
+    Serial.println();
+}
+
+void printEncoderErrors() {
+    Serial.print("errors");
+    for(int i = 0; i < 4; ++i) {
+        Serial.print(" ");
+        Serial.print(MOTOR_STATE[i].err_nb);
     }
     Serial.println();
 }
@@ -250,7 +258,9 @@ void loop() {
     skip = (skip + 1) % 10000;
     if (!skip) {
         printEncoders();
+        printEncoderErrors();
         printOdometry();
         printSpeeds();
+        Serial.println();
     }
 }
