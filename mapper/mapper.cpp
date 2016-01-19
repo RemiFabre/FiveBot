@@ -14,7 +14,7 @@
 #define ENC_RATIO 3072
 #define FACTOR 100
 
-#define PID_ON
+#define PID_OFF
 
 
 /***** Structures definitions *****/
@@ -80,12 +80,13 @@ PID MOTOR_PID[MOTOR_COUNT] = {
 };
 
 
-
 inline void readEncoder(int motor, char port) {
     const char a = true and port & _BV(MOTOR_PIN[motor].enc_a);
     const char b = true and port & _BV(MOTOR_PIN[motor].enc_b);
     const char phase = (a ^ b) | b << 1;
     const int direction = ((phase - MOTOR_STATE[motor].encoder_phase + 5) & 3) - 1;
+    if(direction == 0) // For encoders 2 & 3 on the same interrupt port  
+        return;
     if(direction != 2)
         MOTOR_STATE[motor].direction = direction;
     else
@@ -107,21 +108,20 @@ ISR(PCINT0_vect) {
 }
 
 ISR(PCINT1_vect) {
-    readEncoder(M2, PINC);
-    readEncoder(M3, PINC);
+    auto port = PINC;
+    readEncoder(M2, port);
+    readEncoder(M3, port);
 }
 
 ISR(PCINT2_vect) {
     readEncoder(M1, PIND);
 }
 
-ISR(TIMER1_COMPA_vect){
-    // for(int motor = 0; motor < 4; ++motor) {  
-    //     computeEncSpeed(motor);
-    //     MOTOR_STATE[motor].direction = 0;
-    // }
-    computeEncSpeed(M3);
-
+ISR(TIMER2_COMPB_vect){
+    for(int motor = 0; motor < 4; ++motor) {  
+        computeEncSpeed(motor);
+        MOTOR_STATE[motor].direction = 0;
+    }
 }
 
 void setMotorSpeed(int motor, int v) {
@@ -190,11 +190,11 @@ void setupTimer(){
     //Set interrupt on compare match
     // Mode 4, CTC on OCR1A
     // set prescaler to 1024 and start the timer
-    TIMSK1 = _BV(OCIE1A);
-    TCCR1A = 0;
-    TCCR1B = _BV(WGM12) | _BV(CS12) | _BV(CS10);
+    TIMSK2 = _BV(OCIE2B);
+    TCCR2A = _BV(WGM21);
+    TCCR2B = /*_BV(WGM12) | */_BV(CS22) | _BV(CS21) | _BV(CS20);
     //Timer interrupt every 12.8ms
-    OCR1A = 200;
+    OCR2A = 200;
 }
 
 void debugSetMotorsForward() {
@@ -211,7 +211,7 @@ void setup() {
     setupPID();
     setupTimer();
     setupInterrupts();
-
+    
     debugSetMotorsForward();
 }
 
