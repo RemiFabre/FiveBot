@@ -30,7 +30,6 @@ Car::Car(): mMotors {
 
 void Car::setupSerial() {
     Serial.begin(2000000);
-    Serial.println(__FUNCTION__);
 }
 
 void Car::setupUpdateTimer() {
@@ -44,19 +43,21 @@ void Car::setupUpdateTimer() {
     OCR2A = 200;
 }
 
-void Car::updateWheels() {
+void Car::timerLoop() {
     mWheels[0].update();
     mWheels[1].update();
     mWheels[2].update();
     mWheels[3].update();
 }
 
-void Car::dump() const {
-    mWheels[0].dump();
-    mWheels[1].dump();
-    mWheels[2].dump();
-    mWheels[3].dump();
-    Serial.println();
+void Car::mainLoop() {
+    // Transmit the state from time to time
+    static int skip = 0;
+    skip = (skip + 1) % 255;
+    if (not skip)
+        Serial.println(mWheels[0].getAngularSpeed(1000 / 12.8));
+    // Let the ATmega sleep until the next interrupt
+    sleep_mode();
 }
 
 ISR(PCINT0_vect) {
@@ -76,9 +77,14 @@ ISR(PCINT2_vect) {
 }
 
 ISR(TIMER2_COMPB_vect) {
-    car->updateWheels();
+    car->timerLoop();
 }
 
-// Arduino
-void setup() { car = new Car; }
-void loop() { car->dump(); sleep_mode(); }
+void setup() {
+    car = new Car;
+    Serial.println(__FUNCTION__);
+}
+
+void loop() {
+    car->mainLoop();
+}

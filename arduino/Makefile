@@ -8,7 +8,7 @@ ARDUINO_LDFLAGS=-Wl,--gc-sections -lm
 ARDUINO_INCLUDES=-I$(ARDUINO_PATH)/hardware/arduino/cores/arduino -I$(ARDUINO_PATH)/hardware/arduino/variants/standard
 ARDUINO_SRC=`find $(ARDUINO_PATH)/hardware/arduino/cores/arduino/ -name "*.c" -or -name "*.cpp")`
 
-TARGET=mapper
+TARGET=`pwd`
 SRC=$(wildcard *.cpp)
 OBJ=$(SRC:.cpp=.o)
 CFLAGS=-std=c++11 -Wall

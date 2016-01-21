@@ -12,20 +12,36 @@ class Car {
     RotaryEncoder mEncoders[4];
     Wheel mWheels[4];
     
+    /**
+     * Sets up the Serial com.
+     */
     void setupSerial();
+    
+    /**
+     * Sets up the timer used to trigger calls to #update().
+     */
     void setupUpdateTimer();
     
-    void updateWheels();
+    /**
+     * Loop function called from a timer interrupt vector.
+     * Must be quick.
+     * Executes at a regular interval.
+     */
+    void timerLoop();
     
     public:
     
     Car();
     
     /**
-     * Dump the state of the car to the Serial com.
+     * Loop function called by the main program.
+     * Can be slow and can use the Serial com.
      */
-    void dump() const;
+    void mainLoop();
     
+    /**
+     * Interrupt vectors need to call private functions.
+     */
     friend void PCINT0_vect();
     friend void PCINT1_vect();
     friend void PCINT2_vect();

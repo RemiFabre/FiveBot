@@ -51,9 +51,4 @@ class RotaryEncoder {
      * @param port Pointer to the port to read.
      */
     void update(unsigned char port);
-    
-    /**
-     * Dumps the state of the encoder to the Serial com.
-     */
-    void dump() const;
 };

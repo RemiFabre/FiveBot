@@ -25,10 +25,3 @@ void RotaryEncoder::update(unsigned char port) {
         mPosition += mDirection;
     }
 }
-
-void RotaryEncoder::dump() const {
-    Serial.print("pos: ");
-    Serial.print(mPosition);
-    Serial.print(" errors: ");
-    Serial.println(mErrors);
-}

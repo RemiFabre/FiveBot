@@ -19,7 +19,7 @@ class Wheel {
     int mPositionDeltaIndex;
     
     /**
-     * Sum of the values inside #mPositionDeltas.
+     * Sum of #mPositionDeltas.
      */
     int mPositionDeltaSum;
     
@@ -35,7 +35,8 @@ class Wheel {
     void update();
     
     /**
-     * Dumps the state of the wheel to the Serial com.
+     * Computes the signed speed of the wheel in radians per second.
+     * @param updateFrequency Frequency (in Hertz) between consecutive calls to #update().
      */
-    void dump() const;
+    float getAngularSpeed(float updateFrequency) const;
 };
