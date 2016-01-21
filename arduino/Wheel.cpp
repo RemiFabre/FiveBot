@@ -10,7 +10,6 @@ Wheel::Wheel(Motor& motor, RotaryEncoder& encoder): mMotor(motor), mEncoder(enco
 void Wheel::update() {
     mPositionDeltaSum -= mPositionDeltas[mPositionDeltaIndex];
     mPositionDeltaSum += mPositionDeltas[mPositionDeltaIndex] = mEncoder.mPosition;
-    mEncoder.mPosition = 0;
     if (++mPositionDeltaIndex == POSITION_DELTA_COUNT)
         mPositionDeltaIndex = 0;
 }

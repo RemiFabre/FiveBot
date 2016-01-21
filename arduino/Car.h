@@ -11,6 +11,8 @@ class Car {
     Motor mMotors[4];
     RotaryEncoder mEncoders[4];
     Wheel mWheels[4];
+    float mPosition[2];
+    float mOrientation;
     
     /**
      * Sets up the Serial com.
@@ -23,11 +25,15 @@ class Car {
     void setupUpdateTimer();
     
     /**
-     * Loop function called from a timer interrupt vector.
+     * Loop function called at a regular interval from a timer interrupt vector.
      * Must be quick.
-     * Executes at a regular interval.
      */
     void timerLoop();
+    
+    /**
+     * Updates the encoders and the odometry of the car.
+     */
+    void updateOdometry();
     
     public:
     
@@ -38,6 +44,26 @@ class Car {
      * Can be slow and can use the Serial com.
      */
     void mainLoop();
+    
+    /**
+     * Prints the position of the encoders.
+     */
+    void printEncoderPositions() const;
+    
+    /**
+     * Prints the errors encountered by the encoders.
+     */
+    void printEncoderErrors() const;
+    
+    /**
+     * Prints the speed of the wheels.
+     */
+    void printWheelSpeeds() const;
+    
+    /**
+     * Prints the position and orientation of the car.
+     */
+    void printOdometry() const;
     
     /**
      * Interrupt vectors need to call private functions.

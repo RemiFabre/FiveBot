@@ -18,7 +18,7 @@ TTY=/dev/ttyUSB0
 A_CC=$(ARDUINO_CC) $(ARDUINO_CFLAGS) $(ARDUINO_LDFLAGS) $(ARDUINO_INCLUDES) $(CFLAGS)
 A_AVRDUDE=$(ARDUINO_AVRDUDE) -C $(ARDUINO_AVRDUDE_CONF) -p atmega328p -P $(TTY) -b 57600 -c arduino
 
-all: clean build upload serial
+all: clean build upload control
 
 build: $(TARGET).hex
 
@@ -26,7 +26,10 @@ upload: build
 	$(A_AVRDUDE) -D -U flash:w:$(TARGET).hex:i
 
 serial:
-	cu -l $(TTY) -s 2000000
+	cu -l $(TTY) -s 2000000 --nostop
+
+control:
+	./Control.py $(TTY)
 
 %.hex: %.elf
 	$(ARDUINO_OBJCOPY) -O ihex $^ $@ -v

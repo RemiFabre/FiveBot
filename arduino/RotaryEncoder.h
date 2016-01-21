@@ -24,7 +24,7 @@ class RotaryEncoder {
     /**
      * Error count.
      */
-    int mErrors;
+    unsigned int mErrors;
     
     public:
     
@@ -51,4 +51,11 @@ class RotaryEncoder {
      * @param port Pointer to the port to read.
      */
     void update(unsigned char port);
+    
+    /**
+     * Returns the errors encountered by the encoder.
+     */
+    inline unsigned int getErrorCount() const {
+        return mErrors;
+    }
 };
