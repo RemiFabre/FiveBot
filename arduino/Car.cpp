@@ -7,9 +7,7 @@
 #include "Car.h"
 
 #define UPDATE_FREQUENCY (1000 / 12.8)
-#define R 75 
-#define L1 15
-#define L2 15
+
 
 static Car* car;
 
@@ -35,10 +33,11 @@ Car::Car(): mMotors {
     0,
 }, mOrientation(
     0
-) {
+), mOdometryPublisher ("ard_odom", &mOdometryMessage)
+{
     setupSerial();
     setupUpdateTimer();
-    setSpeed(0, 0, 0);
+    setSpeed(50, 0, 0);
 }
 
 void Car::setupSerial() {
@@ -62,8 +61,8 @@ void Car::timerLoop() {
 
 
 void Car::updateOdometry() {
-
     // t1 = micros();
+
     // Update wheel speeds from encoders
     mWheels[0].updateOdometry();
     mWheels[1].updateOdometry();
@@ -93,7 +92,6 @@ void Car::updateOdometry() {
 }
 
 void Car::setSpeed(float vx, float vy, float w) {
-    w *= (L1 + L2);
     mWheels[0].setTargetSpeed(-vx + vy + w);
     mWheels[1].setTargetSpeed(vx + vy - w);
     mWheels[2].setTargetSpeed(-vx + vy - w);
@@ -105,13 +103,14 @@ void Car::mainLoop() {
     static int skip = 0;
     skip = (skip + 1) % 255;
     if (not skip) {
-        printEncoderPositions();
-        printEncoderErrors();
-        printMotorPower();
-        printWheelSpeeds();
-        printOdometry();
-        Serial.println();
+        // printEncoderPositions();
+        // printEncoderErrors();
+        // printMotorPower();
+        // printWheelSpeeds();
+        // printOdometry();
+        // Serial.println();
         // Serial.println(t);
+        publishOdometry();
     }
     // Let the ATmega sleep until the next interrupt
     sleep_mode();
@@ -161,6 +160,14 @@ void Car::printOdometry() const {
     Serial.print("|");
     Serial.print(mOrientation);
     Serial.println();
+}
+
+void Car::publishOdometry(){
+    mOdometryMessage.angular.z = mOrientation;
+    mOdometryMessage.linear.x = mPosition[0];
+    mOdometryMessage.linear.y = mPosition[1];
+
+    mOdometryPublisher.publish(&mOdometryMessage);
 }
 
 ISR(PCINT0_vect) {

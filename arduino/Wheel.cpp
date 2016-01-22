@@ -34,9 +34,9 @@ float Wheel::getAngularSpeed() const {
 void Wheel::setTargetSpeed(float speed) {
     mPositionDeltaSumTarget =
         speed
-        / mUpdateFrequency
+        * POSITION_DELTA_COUNT
         / (2 * M_PI / ENCODER_INCREMENTS_PER_TURN)
-        * POSITION_DELTA_COUNT;
+        / mUpdateFrequency;
     mPositionDeltaSumIntegratedError = 0;
 }
 

@@ -9,9 +9,9 @@ ARDUINO_INCLUDES=-I$(ARDUINO_PATH)/hardware/arduino/cores/arduino -I$(ARDUINO_PA
 ARDUINO_SRC=`find $(ARDUINO_PATH)/hardware/arduino/cores/arduino/ -name "*.c" -or -name "*.cpp")`
 
 TARGET=arduino
-SRC=$(wildcard *.cpp)
+SRC=$(wildcard *.cpp) $(wildcard ros_lib/*.cpp)
 OBJ=$(SRC:.cpp=.o)
-CFLAGS=-std=c++11 -Wall
+CFLAGS=-std=c++11 -Wall -I ros_lib
 
 TTY=/dev/ttyUSB0
 

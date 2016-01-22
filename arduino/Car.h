@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Wheel.h"
+#include <ros.h>
+#include <geometry_msgs/Twist.h>
 
 ISR(PCINT0_vect);
 ISR(PCINT1_vect);
@@ -13,6 +15,11 @@ class Car {
     Wheel mWheels[4];
     float mPosition[2];
     float mOrientation;
+
+    ros::NodeHandle mNode;
+    geometry_msgs::Twist mOdometryMessage;
+    ros::Publisher mOdometryPublisher;
+
     
     /**
      * Sets up the Serial com.
@@ -74,6 +81,11 @@ class Car {
      * Prints the position and orientation of the car.
      */
     void printOdometry() const;
+
+    /**
+     * Publishes a ROS message for odometry
+     */
+    void publishOdometry();
     
     /**
      * Interrupt vectors need to call private functions.
