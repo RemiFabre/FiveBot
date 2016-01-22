@@ -61,6 +61,11 @@ class Car {
     void printEncoderErrors() const;
     
     /**
+     * Prints the power applied to the motors.
+     */
+    void printMotorPower() const;
+    
+    /**
      * Prints the speed of the wheels.
      */
     void printWheelSpeeds() const;

@@ -24,10 +24,10 @@ Car::Car(): mMotors {
     RotaryEncoder(DDRC, PC2, PC3, PCIE1, PCMSK1, PCINT10, PCINT11), // Pins A2 & A3.
     RotaryEncoder(DDRB, PB4, PB5, PCIE0, PCMSK0, PCINT4, PCINT5), // Pins 12 & 13.
 }, mWheels {
-    Wheel(mMotors[0], mEncoders[0]),
-    Wheel(mMotors[1], mEncoders[1]),
-    Wheel(mMotors[2], mEncoders[2]),
-    Wheel(mMotors[3], mEncoders[3]),
+    Wheel(mMotors[0], mEncoders[0], UPDATE_FREQUENCY),
+    Wheel(mMotors[1], mEncoders[1], UPDATE_FREQUENCY),
+    Wheel(mMotors[2], mEncoders[2], UPDATE_FREQUENCY),
+    Wheel(mMotors[3], mEncoders[3], UPDATE_FREQUENCY),
 }, mPosition {
     0,
     0,
@@ -36,7 +36,7 @@ Car::Car(): mMotors {
 ) {
     setupSerial();
     setupUpdateTimer();
-    setSpeed(50, 0, 0);
+    setSpeed(0, 0, 0);
 }
 
 void Car::setupSerial() {
@@ -59,31 +59,38 @@ void Car::timerLoop() {
 }
 
 void Car::updateOdometry() {
-    mWheels[0].update();
-    mWheels[1].update();
-    mWheels[2].update();
-    mWheels[3].update();
-    const int w[] = {
-        mEncoders[0].mPosition,
-        mEncoders[1].mPosition,
-        mEncoders[2].mPosition,
-        mEncoders[3].mPosition,
-    };
+    // Update wheel speeds from encoders
+    mWheels[0].updateOdometry();
+    mWheels[1].updateOdometry();
+    mWheels[2].updateOdometry();
+    mWheels[3].updateOdometry();
+    // Save encoder positions and reset them
+    int w[4];
+    w[0] = mEncoders[0].mPosition;
     mEncoders[0].mPosition = 0;
+    w[1] = mEncoders[1].mPosition;
     mEncoders[1].mPosition = 0;
+    w[2] = mEncoders[2].mPosition;
     mEncoders[2].mPosition = 0;
+    w[3] = mEncoders[3].mPosition;
     mEncoders[3].mPosition = 0;
+    // Update odometry
     mPosition[0] += R / 4 * (w[0] + w[1] - w[2] - w[3]);
     mPosition[1] += R / 4 * (w[0] - w[1] - w[2] + w[3]);
     mOrientation += R / 4 / (L1 + L2) * (-w[0] + w[1] - w[2] + w[3]);
+    // Update motor speeds
+    mWheels[0].regulatePower();
+    mWheels[1].regulatePower();
+    mWheels[2].regulatePower();
+    mWheels[3].regulatePower();
 }
 
 void Car::setSpeed(float vx, float vy, float w) {
     w *= (L1 + L2);
-    mMotors[0].setPower(-vx + vy + w);
-    mMotors[1].setPower(vx + vy - w);
-    mMotors[2].setPower(-vx + vy - w);
-    mMotors[3].setPower(vx + vy + w);
+    mWheels[0].setTargetSpeed(-vx + vy + w);
+    mWheels[1].setTargetSpeed(vx + vy - w);
+    mWheels[2].setTargetSpeed(-vx + vy - w);
+    mWheels[3].setTargetSpeed(vx + vy + w);
 }
 
 void Car::mainLoop() {
@@ -93,6 +100,7 @@ void Car::mainLoop() {
     if (not skip) {
         printEncoderPositions();
         printEncoderErrors();
+        printMotorPower();
         printWheelSpeeds();
         printOdometry();
         Serial.println();
@@ -119,11 +127,20 @@ void Car::printEncoderErrors() const {
     Serial.println();
 }
 
+void Car::printMotorPower() const {
+    Serial.print("power");
+    for (int i = 0; i < 4; ++i) {
+        Serial.print("|");
+        Serial.print(mMotors[i].getPower());
+    }
+    Serial.println();
+}
+
 void Car::printWheelSpeeds() const {
     Serial.print("speeds");
     for (int i = 0; i < 4; ++i) {
         Serial.print("|");
-        Serial.print(mWheels[i].getAngularSpeed(UPDATE_FREQUENCY));
+        Serial.print(mWheels[i].getAngularSpeed());
     }
     Serial.println();
 }

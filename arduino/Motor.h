@@ -22,4 +22,11 @@ class Motor {
      * @param power Power to apply to the motor between -127 and +127 (controls direction too).
      */
     void setPower(signed char power);
+    
+    /**
+     * Returns the power currently given to the motor.
+     */
+    inline signed char getPower() const {
+        return (mDirection * 2 - 1) * mPower / 2;
+    }
 };
