@@ -7,11 +7,13 @@
 #include "Car.h"
 
 #define UPDATE_FREQUENCY (1000 / 12.8)
-#define R (9.4 / 2)
+#define R 75 
 #define L1 15
 #define L2 15
 
 static Car* car;
+
+// long t1,t;
 
 Car::Car(): mMotors {
     Motor( 4,  5),
@@ -58,7 +60,10 @@ void Car::timerLoop() {
     updateOdometry();
 }
 
+
 void Car::updateOdometry() {
+
+    // t1 = micros();
     // Update wheel speeds from encoders
     mWheels[0].updateOdometry();
     mWheels[1].updateOdometry();
@@ -75,14 +80,16 @@ void Car::updateOdometry() {
     w[3] = mEncoders[3].mPosition;
     mEncoders[3].mPosition = 0;
     // Update odometry
-    mPosition[0] += R / 4 * (w[0] + w[1] - w[2] - w[3]);
-    mPosition[1] += R / 4 * (w[0] - w[1] - w[2] + w[3]);
-    mOrientation += R / 4 / (L1 + L2) * (-w[0] + w[1] - w[2] + w[3]);
+    mPosition[0] += w[0] + w[1] - w[2] - w[3];
+    mPosition[1] += w[0] - w[1] - w[2] + w[3];
+    mOrientation += -w[0] + w[1] - w[2] + w[3];
     // Update motor speeds
     mWheels[0].regulatePower();
     mWheels[1].regulatePower();
     mWheels[2].regulatePower();
     mWheels[3].regulatePower();
+
+    // t = micros() - t1;
 }
 
 void Car::setSpeed(float vx, float vy, float w) {
@@ -104,6 +111,7 @@ void Car::mainLoop() {
         printWheelSpeeds();
         printOdometry();
         Serial.println();
+        // Serial.println(t);
     }
     // Let the ATmega sleep until the next interrupt
     sleep_mode();

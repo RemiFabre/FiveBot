@@ -40,7 +40,9 @@ void Wheel::setTargetSpeed(float speed) {
     mPositionDeltaSumIntegratedError = 0;
 }
 
+
 void Wheel::regulatePower() {
+
     const int error = mPositionDeltaSumTarget - mPositionDeltaSum;
     mPositionDeltaSumIntegratedError += error;
     mPositionDeltaSumIntegratedError =
@@ -50,10 +52,12 @@ void Wheel::regulatePower() {
     const int p = mKP * error;
     const int i = mKI * mPositionDeltaSumIntegratedError;
     const int d = mKD * mPositionDeltas[mPositionDeltaIndex];
-    const int output = -(p + i - d) / 100;
+    const int output = -(p + i - d) >> 7;
     mMotor.setPower(
         output > 127 ? 127 :
         output < -127 ? -127 :
         output
     );
+
+
 }

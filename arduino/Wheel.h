@@ -15,7 +15,7 @@ class Wheel {
     /**
      * PID coefficients.
      */
-    float mKP, mKI, mKD;
+    int mKP, mKI, mKD;
     
     /**
      * Circular buffer of the last known changes in the encoder's absolute position.
