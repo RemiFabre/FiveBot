@@ -16,7 +16,7 @@ frame.grid(**pad)
 
 # Create odometry box
 odoBox = tk.LabelFrame(frame, text="Odometry", **pad)
-odoBox.grid(**pad)
+odoBox.grid(columnspan=2, **pad)
 odoX = tk.Label(odoBox, text="X", **pad)
 odoY = tk.Label(odoBox, text="Y", **pad)
 odoA = tk.Label(odoBox, text="Angle", **pad)
@@ -30,20 +30,22 @@ odoX.grid(row=1, column=0)
 odoY.grid(row=1, column=1)
 odoA.grid(row=1, column=2)
 
-# Create speed box
-speedBox = tk.LabelFrame(frame, text="Speeds (rad/s)", **pad)
-speedBox.grid(**pad)
-speedometer = []
+# Create motor box
+motorBox = tk.LabelFrame(frame, text="Motor power & speeds (rad/s)", **pad)
+motorBox.grid(row=1, column=0, **pad)
+motorMeters = []
 for i in range(4):
-    label = tk.Label(speedBox, text="M"+str(i), **pad)
+    label = tk.Label(motorBox, text="M"+str(i), **pad)
     label.grid(row=0, column=i)
-    meter = tk.Label(speedBox, width=5, **pad)
-    meter.grid(row=1, column=i)
-    speedometer.append(meter)
+    meter1 = tk.Label(motorBox, width=5, **pad)
+    meter1.grid(row=1, column=i)
+    meter2 = tk.Label(motorBox, width=5, **pad)
+    meter2.grid(row=2, column=i)
+    motorMeters.append([meter1, meter2])
 
 # Create encoder box
 encoderBox = tk.LabelFrame(frame, text="Encoder buffers & errors", **pad)
-encoderBox.grid(**pad)
+encoderBox.grid(row=1, column=1, **pad)
 encoderMeters = []
 for i in range(4):
     label = tk.Label(encoderBox, text="M"+str(i), **pad)
@@ -56,7 +58,7 @@ for i in range(4):
 
 # Create info box
 infoBox = tk.LabelFrame(frame, text="Info", **pad)
-infoBox.grid(**pad)
+infoBox.grid(columnspan=2, **pad)
 infoBoxScroll = tk.Scrollbar(infoBox)
 infoBoxScroll.grid(row=0, column=1, sticky="ns")
 infoBoxText = tk.Listbox(infoBox, width=70, yscrollcommand=infoBoxScroll.set)
@@ -97,9 +99,13 @@ class BoardCom(threading.Thread):
         odoY["text"] = y
         odoA["text"] = a
     
+    def cmd_power(self, *power):
+        for i in range(4):
+            motorMeters[i][0]["text"] = power[i]
+    
     def cmd_speeds(self, *speeds):
         for i in range(4):
-            speedometer[i]["text"] = speeds[i]
+            motorMeters[i][1]["text"] = speeds[i]
     
     def cmd_positions(self, *positions):
         for i in range(4):
