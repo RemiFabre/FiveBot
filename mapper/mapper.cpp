@@ -100,7 +100,7 @@ void computeEncSpeed(int motor){
     m.direction_sum -= m.direction_hist[m.direction_index];
     m.direction_sum += (m.direction_hist[m.direction_index] = m.direction);
     m.direction_index = NEXT_SPEED_INDEX(m.direction_index);
-    m.speed =  m.direction_sum;
+    m.speed =  m.direction_sum ;
 }
 
 ISR(PCINT0_vect) {
@@ -198,7 +198,7 @@ void setupTimer(){
 }
 
 void debugSetMotorsForward() {
-    const char speed = 50;
+    const char speed = 127;
     setMotorSpeed(M1, speed);
     setMotorSpeed(M2, speed);
     setMotorSpeed(M3, -speed);
@@ -245,7 +245,7 @@ void printOdometry() {
 
 void printSpeeds() {
     Serial.print("speeds");
-    for(int i = 0; i < 4; ++i) {
+    for(int i = 0; i < 4; ++i) {    
         Serial.print(" ");
         Serial.print(MOTOR_STATE[i].speed);
     }
@@ -253,9 +253,17 @@ void printSpeeds() {
 }
 
 
+void send_Serial(){
+
+    unsigned short head_1 = 0xAA;
+    unsigned short head_2 = 0xFF;
+
+
+}
+
 void loop() {
     static int skip = 0;
-    skip = (skip + 1) % 10000;
+    skip = (skip + 1) % 1000;
     if (!skip) {
         printEncoders();
         printEncoderErrors();
