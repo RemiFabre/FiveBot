@@ -3,15 +3,15 @@ ARDUINO_CC=$(ARDUINO_PATH)/hardware/tools/avr/bin/avr-g++
 ARDUINO_OBJCOPY=$(ARDUINO_PATH)/hardware/tools/avr/bin/avr-objcopy
 ARDUINO_AVRDUDE=$(ARDUINO_PATH)/hardware/tools/avr/bin/avrdude
 ARDUINO_AVRDUDE_CONF=$(ARDUINO_PATH)/hardware/tools/avrdude.conf
-ARDUINO_CFLAGS=-fno-exceptions -ffunction-sections -fdata-sections -mmcu=atmega328p -DF_CPU=16000000L -DUSB_VID=null -DUSB_PID=null -DARDUINO=105 -D__PROG_TYPES_COMPAT__ -O3 -ffast-math -fsingle-precision-constant 
+ARDUINO_CFLAGS=-fno-exceptions -ffunction-sections -fdata-sections -mmcu=atmega328p -DF_CPU=16000000L -DUSB_VID=null -DUSB_PID=null -DARDUINO=105 -D__PROG_TYPES_COMPAT__ -Os -ffast-math -fsingle-precision-constant
 ARDUINO_LDFLAGS=-Wl,--gc-sections -lm
 ARDUINO_INCLUDES=-I$(ARDUINO_PATH)/hardware/arduino/cores/arduino -I$(ARDUINO_PATH)/hardware/arduino/variants/standard
 ARDUINO_SRC=`find $(ARDUINO_PATH)/hardware/arduino/cores/arduino/ -name "*.c" -or -name "*.cpp")`
 
 TARGET=arduino
-SRC=$(wildcard *.cpp) $(wildcard ros_lib/*.cpp)
+SRC=$(wildcard *.cpp)
 OBJ=$(SRC:.cpp=.o)
-CFLAGS=-std=c++11 -Wall -I ros_lib
+CFLAGS=-std=c++11 -Wall
 
 TTY=/dev/ttyUSB0
 

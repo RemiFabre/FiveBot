@@ -8,7 +8,6 @@
 
 #define UPDATE_FREQUENCY (1000 / 12.8)
 
-
 static Car* car;
 
 // long t1,t;
@@ -33,11 +32,10 @@ Car::Car(): mMotors {
     0,
 }, mOrientation(
     0
-), mOdometryPublisher ("ard_odom", &mOdometryMessage)
-{
+) {
     setupSerial();
     setupUpdateTimer();
-    setSpeed(50, 0, 0);
+    setSpeed(10, 0, 0);
 }
 
 void Car::setupSerial() {
@@ -58,7 +56,6 @@ void Car::setupUpdateTimer() {
 void Car::timerLoop() {
     updateOdometry();
 }
-
 
 void Car::updateOdometry() {
     // t1 = micros();
@@ -103,71 +100,34 @@ void Car::mainLoop() {
     static int skip = 0;
     skip = (skip + 1) % 255;
     if (not skip) {
-        // printEncoderPositions();
-        // printEncoderErrors();
-        // printMotorPower();
-        // printWheelSpeeds();
-        // printOdometry();
-        // Serial.println();
-        // Serial.println(t);
         publishOdometry();
+        publishWheels();
+        // Serial.println(t);
     }
     // Let the ATmega sleep until the next interrupt
     sleep_mode();
 }
 
-void Car::printEncoderPositions() const {
-    Serial.print("positions");
+void Car::publishOdometry() const {
+    Serial.write('o');
+    Serial.write((uint8_t*)mPosition, sizeof(mPosition));
+    Serial.write((uint8_t*)&mOrientation, sizeof(mOrientation));
+    Serial.println();
+}
+
+void Car::publishWheels() const {
+    Serial.write('w');
     for (int i = 0; i < 4; ++i) {
-        Serial.print("|");
-        Serial.print(mEncoders[i].mPosition);
+        const int msg[] = {
+            mMotors[i].getPower(),
+            mEncoders[i].mPosition,
+            mEncoders[i].getErrorCount(),
+        };
+        const float speed = mWheels[i].getAngularSpeed();
+        Serial.write((uint8_t*)msg, sizeof(msg));
+        Serial.write((uint8_t*)&speed, sizeof(speed));
     }
     Serial.println();
-}
-
-void Car::printEncoderErrors() const {
-    Serial.print("errors");
-    for (int i = 0; i < 4; ++i) {
-        Serial.print("|");
-        Serial.print(mEncoders[i].getErrorCount());
-    }
-    Serial.println();
-}
-
-void Car::printMotorPower() const {
-    Serial.print("power");
-    for (int i = 0; i < 4; ++i) {
-        Serial.print("|");
-        Serial.print(mMotors[i].getPower());
-    }
-    Serial.println();
-}
-
-void Car::printWheelSpeeds() const {
-    Serial.print("speeds");
-    for (int i = 0; i < 4; ++i) {
-        Serial.print("|");
-        Serial.print(mWheels[i].getAngularSpeed());
-    }
-    Serial.println();
-}
-
-void Car::printOdometry() const {
-    Serial.print("odometry|");
-    Serial.print(mPosition[0]);
-    Serial.print("|");
-    Serial.print(mPosition[1]);
-    Serial.print("|");
-    Serial.print(mOrientation);
-    Serial.println();
-}
-
-void Car::publishOdometry(){
-    mOdometryMessage.angular.z = mOrientation;
-    mOdometryMessage.linear.x = mPosition[0];
-    mOdometryMessage.linear.y = mPosition[1];
-
-    mOdometryPublisher.publish(&mOdometryMessage);
 }
 
 ISR(PCINT0_vect) {
