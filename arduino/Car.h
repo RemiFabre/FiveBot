@@ -35,6 +35,11 @@ class Car {
      */
     void updateOdometry();
     
+    /**
+     * Sets the speed of each wheel to make the car move.
+     */
+    void setSpeed(float vx, float vy, float w);
+    
     public:
     
     Car();

@@ -7,6 +7,9 @@
 #include "Car.h"
 
 #define UPDATE_FREQUENCY (1000 / 12.8)
+#define R (9.4 / 2)
+#define L1 15
+#define L2 15
 
 static Car* car;
 
@@ -33,10 +36,7 @@ Car::Car(): mMotors {
 ) {
     setupSerial();
     setupUpdateTimer();
-    mMotors[0].setPower(10);
-    mMotors[1].setPower(10);
-    mMotors[2].setPower(10);
-    mMotors[3].setPower(10);
+    setSpeed(50, 0, 0);
 }
 
 void Car::setupSerial() {
@@ -73,10 +73,17 @@ void Car::updateOdometry() {
     mEncoders[1].mPosition = 0;
     mEncoders[2].mPosition = 0;
     mEncoders[3].mPosition = 0;
-    const float R = 9.4 / 2, L1 = 15, L2 = 15;
     mPosition[0] += R / 4 * (w[0] + w[1] - w[2] - w[3]);
     mPosition[1] += R / 4 * (w[0] - w[1] - w[2] + w[3]);
     mOrientation += R / 4 / (L1 + L2) * (-w[0] + w[1] - w[2] + w[3]);
+}
+
+void Car::setSpeed(float vx, float vy, float w) {
+    w *= (L1 + L2);
+    mMotors[0].setPower(-vx + vy + w);
+    mMotors[1].setPower(vx + vy - w);
+    mMotors[2].setPower(-vx + vy - w);
+    mMotors[3].setPower(vx + vy + w);
 }
 
 void Car::mainLoop() {
