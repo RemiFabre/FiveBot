@@ -64,6 +64,11 @@ class Car {
     void publishWheels() const;
     
     /**
+     * Interprets the commands given on the Serial com.
+     */
+    void readSerial();
+    
+    /**
      * Interrupt vectors need to call private functions.
      */
     friend void PCINT0_vect();

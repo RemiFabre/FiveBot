@@ -35,7 +35,6 @@ Car::Car(): mMotors {
 ) {
     setupSerial();
     setupUpdateTimer();
-    setSpeed(0, 0, 3*3.14);
 }
 
 void Car::setupSerial() {
@@ -104,6 +103,8 @@ void Car::mainLoop() {
         publishWheels();
         // Serial.println(t);
     }
+    // Read commands sent to the board
+    Car::readSerial();
     // Let the ATmega sleep until the next interrupt
     sleep_mode();
 }
@@ -128,6 +129,18 @@ void Car::publishWheels() const {
         Serial.write((uint8_t*)&speed, sizeof(speed));
     }
     Serial.println();
+}
+
+void Car::readSerial() {
+    if (Serial.available()) {
+        const char cmd = Serial.read();
+        if (cmd == 's') {
+            float speeds[3];
+            Serial.readBytes((char*)speeds, sizeof(speeds));
+            setSpeed(speeds[0], speeds[1], speeds[2]);
+        }
+        while (Serial.read() != '\n') {}
+    }
 }
 
 ISR(PCINT0_vect) {

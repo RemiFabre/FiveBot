@@ -19,6 +19,7 @@ class BoardGui:
     def create_gui(self):
         self.create_window()
         self.create_odometry_box()
+        self.create_speed_box()
         self.create_motor_box()
         self.create_encoder_box()
         self.create_info_box()
@@ -34,19 +35,34 @@ class BoardGui:
     
     def create_odometry_box(self):
         odoBox = tk.LabelFrame(self.frame, text="Odometry", **self.pad)
-        odoBox.grid(columnspan=2, **self.pad)
+        odoBox.grid(row=0, column=0, **self.pad)
         self.odoX = tk.Label(odoBox, text="X", **self.pad)
         self.odoY = tk.Label(odoBox, text="Y", **self.pad)
         self.odoW = tk.Label(odoBox, text="Angle", **self.pad)
         self.odoX.grid(row=0, column=0)
         self.odoY.grid(row=0, column=1)
         self.odoW.grid(row=0, column=2)
-        self.odoX = tk.Label(odoBox, width=10, **self.pad)
-        self.odoY = tk.Label(odoBox, width=10, **self.pad)
-        self.odoW = tk.Label(odoBox, width=10, **self.pad)
+        self.odoX = tk.Label(odoBox, width=8, **self.pad)
+        self.odoY = tk.Label(odoBox, width=8, **self.pad)
+        self.odoW = tk.Label(odoBox, width=8, **self.pad)
         self.odoX.grid(row=1, column=0)
         self.odoY.grid(row=1, column=1)
         self.odoW.grid(row=1, column=2)
+    
+    def create_speed_box(self):
+        speedBox = tk.LabelFrame(self.frame, text="Speed", **self.pad)
+        speedBox.grid(row=0, column=1, **self.pad)
+        names = [ "Vx", "Vy", "ω" ]
+        self.speedCtrl = []
+        for i in range(3):
+            label = tk.Label(speedBox, text="0")
+            label.grid(row=0, column=i, **self.pad)
+            entry = tk.Entry(speedBox, width=3)
+            entry.grid(row=1, column=i, **self.pad)
+            entry.insert(0, "0")
+            self.speedCtrl.append(entry)
+        btn = tk.Button(speedBox, command=self.set_speed, text="Set", **self.pad)
+        btn.grid(row=1, column=3, **self.pad)
     
     def create_motor_box(self):
         motorBox = tk.LabelFrame(self.frame, text="Motors", **self.pad)
@@ -106,6 +122,10 @@ class BoardGui:
         self.motorMeters[i][1]["text"] = "%.2f" % speed
         self.encoderMeters[i][0]["text"] = position
         self.encoderMeters[i][1]["text"] = errors
+    
+    def set_speed(self):
+        vx, vy, vz = [ float(entry.get()) for entry in self.speedCtrl ]
+        self.com.send_speed(vx, vy, vz)
 
 if __name__ == "__main__":
     BoardGui().run()
