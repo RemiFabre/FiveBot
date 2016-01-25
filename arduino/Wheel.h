@@ -10,7 +10,7 @@ class Wheel {
     /**
      * Frequency (in Hertz) between consecutive calls to #updateOdometry().
      */
-    const int mUpdateFrequency;
+    const float mUpdateFrequency;
     
     /**
      * PID coefficients.
