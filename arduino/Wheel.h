@@ -69,4 +69,9 @@ class Wheel {
      * Regulate the power applied to the motor by the PID.
      */
     void regulatePower();
+    
+    /**
+     * Should the PID be bypassed.
+     */
+    volatile bool mBypassPID;
 };

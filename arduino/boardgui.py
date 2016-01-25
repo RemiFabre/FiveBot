@@ -61,6 +61,10 @@ class BoardGui:
             entry.grid(row=1, column=i, **self.pad)
             entry.insert(0, "0")
             self.speedCtrl.append(entry)
+        self.pid = tk.IntVar()
+        self.pid.set(1)
+        pid = tk.Checkbutton(speedBox, text="PID", variable=self.pid)
+        pid.grid(row=0, column=3, **self.pad)
         btn = tk.Button(speedBox, command=self.set_speed, text="Set", **self.pad)
         btn.grid(row=1, column=3, **self.pad)
     
@@ -125,7 +129,7 @@ class BoardGui:
     
     def set_speed(self):
         vx, vy, vz = [ float(entry.get()) for entry in self.speedCtrl ]
-        self.com.send_speed(vx, vy, vz)
+        self.com.send_speed(vx, vy, vz, not self.pid.get())
 
 if __name__ == "__main__":
     BoardGui().run()

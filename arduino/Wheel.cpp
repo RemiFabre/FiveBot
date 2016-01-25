@@ -18,7 +18,8 @@ Wheel::Wheel(Motor& motor, RotaryEncoder& encoder, float updateFrequency):
     mPositionDeltaIndex(0),
     mPositionDeltaSum(0),
     mPositionDeltaSumTarget(0),
-    mPositionDeltaSumIntegratedError(0) {}
+    mPositionDeltaSumIntegratedError(0),
+    mBypassPID(false) {}
 
 void Wheel::updateOdometry() {
     mPositionDeltaIndex = (mPositionDeltaIndex + 1) % POSITION_DELTA_COUNT;
@@ -40,9 +41,13 @@ void Wheel::setTargetSpeed(float speed) {
         / INCREMENTS_TO_RADIANS
         / mUpdateFrequency;
     mPositionDeltaSumIntegratedError = 0;
+    if (mBypassPID)
+        mMotor.setPower(speed);
 }
 
 void Wheel::regulatePower() {
+    if (mBypassPID)
+        return;
     const int error = mPositionDeltaSumTarget - mPositionDeltaSum;
     mPositionDeltaSumIntegratedError += error;
     mPositionDeltaSumIntegratedError =

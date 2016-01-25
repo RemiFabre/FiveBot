@@ -137,6 +137,9 @@ void Car::readSerial() {
         float speeds[3];
         if (cmd == 's') {
             Serial.readBytes((char*)speeds, sizeof(speeds));
+            const bool bypassPID = Serial.read();
+            for (int i = 0; i < 4; ++i)
+                mWheels[i].mBypassPID = bypassPID;
             setSpeed(speeds[0], speeds[1], speeds[2]);
         }
         while (Serial.read() != '\n') {}
