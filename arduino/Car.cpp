@@ -134,8 +134,8 @@ void Car::publishWheels() const {
 void Car::readSerial() {
     if (Serial.available()) {
         const char cmd = Serial.read();
+        float speeds[3];
         if (cmd == 's') {
-            float speeds[3];
             Serial.readBytes((char*)speeds, sizeof(speeds));
             setSpeed(speeds[0], speeds[1], speeds[2]);
         }

@@ -38,6 +38,6 @@ class BoardCom:
     
     def on_wheel(self, id, power, position, errors, speed):
         pass
-    
+
     def send_speed(self, vx, vy, w):
         self.send_command("s", "fff", vx, vy, w)

@@ -112,7 +112,7 @@ class BoardGui:
         L = 15 / 100
         x *= R / 4
         y *= R / 4
-        w *= R / 4 / (L + L)
+        w *= R / 4 / (L + L) / 2900 # 2900 units in a cycle
         fmt = "%.2f"
         x, y, w = fmt % x, fmt % y, fmt % w
         self.odoX["text"], self.odoY["text"], self.odoW["text"] = x, y, w
