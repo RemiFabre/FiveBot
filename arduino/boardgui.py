@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+
+import sys
+import threading
+import tkinter as tk
+
+import boardcom
+
+class BoardGui:
+    
+    def run(self):
+        self.create_gui()
+        self.com = boardcom.BoardCom(sys.argv[1])
+        self.com.on_odometry = self.on_odometry
+        self.com.on_wheel = self.on_wheel
+        threading.Thread(target=self.com.run).start()
+        tk.mainloop()
+    
+    def create_gui(self):
+        self.create_window()
+        self.create_odometry_box()
+        self.create_motor_box()
+        self.create_encoder_box()
+        self.create_info_box()
+    
+    def create_window(self):
+        root = tk.Tk()
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(0, weight=1)
+        self.pad = { "padx": 5, "pady": 5 }
+        root.wm_title("FiveBot Control")
+        self.frame = tk.Frame(root)
+        self.frame.grid(**self.pad)
+    
+    def create_odometry_box(self):
+        odoBox = tk.LabelFrame(self.frame, text="Odometry", **self.pad)
+        odoBox.grid(columnspan=2, **self.pad)
+        self.odoX = tk.Label(odoBox, text="X", **self.pad)
+        self.odoY = tk.Label(odoBox, text="Y", **self.pad)
+        self.odoW = tk.Label(odoBox, text="Angle", **self.pad)
+        self.odoX.grid(row=0, column=0)
+        self.odoY.grid(row=0, column=1)
+        self.odoW.grid(row=0, column=2)
+        self.odoX = tk.Label(odoBox, width=10, **self.pad)
+        self.odoY = tk.Label(odoBox, width=10, **self.pad)
+        self.odoW = tk.Label(odoBox, width=10, **self.pad)
+        self.odoX.grid(row=1, column=0)
+        self.odoY.grid(row=1, column=1)
+        self.odoW.grid(row=1, column=2)
+    
+    def create_motor_box(self):
+        motorBox = tk.LabelFrame(self.frame, text="Motors", **self.pad)
+        motorBox.grid(row=1, column=0, **self.pad)
+        tk.Label(motorBox, text="Power", **self.pad).grid(row=1, column=0)
+        tk.Label(motorBox, text="Speed", **self.pad).grid(row=2, column=0)
+        self.motorMeters = []
+        for i in range(4):
+            label = tk.Label(motorBox, text="M"+str(i), **self.pad)
+            label.grid(row=0, column=i+1)
+            meter1 = tk.Label(motorBox, width=5, **self.pad)
+            meter1.grid(row=1, column=i+1)
+            meter2 = tk.Label(motorBox, width=5, **self.pad)
+            meter2.grid(row=2, column=i+1)
+            self.motorMeters.append([meter1, meter2])
+    
+    def create_encoder_box(self):
+        encoderBox = tk.LabelFrame(self.frame, text="Encoders", **self.pad)
+        encoderBox.grid(row=1, column=1, **self.pad)
+        tk.Label(encoderBox, text="Delta", **self.pad).grid(row=1, column=0)
+        tk.Label(encoderBox, text="Errors", **self.pad).grid(row=2, column=0)
+        self.encoderMeters = []
+        for i in range(4):
+            label = tk.Label(encoderBox, text="M"+str(i), **self.pad)
+            label.grid(row=0, column=i+1)
+            meter1 = tk.Label(encoderBox, width=5, **self.pad)
+            meter1.grid(row=1, column=i+1)
+            meter2 = tk.Label(encoderBox, width=5, **self.pad)
+            meter2.grid(row=2, column=i+1)
+            self.encoderMeters.append([meter1, meter2])
+    
+    def create_info_box(self):
+        infoBox = tk.LabelFrame(self.frame, text="Info", **self.pad)
+        infoBox.grid(columnspan=2, **self.pad)
+        infoBoxScroll = tk.Scrollbar(infoBox)
+        infoBoxScroll.grid(row=0, column=1, sticky="ns")
+        self.infoBoxText = tk.Listbox(infoBox, width=70, yscrollcommand=infoBoxScroll.set)
+        self.infoBoxText.grid(row=0)
+        infoBoxScroll.config(command=self.infoBoxText.yview)
+    
+    def echo(self, msg):
+        self.infoBoxText.insert(tk.END, msg)
+        self.infoBoxText.see(tk.END)
+    
+    def on_odometry(self, x, y, w):
+        R = 9.4 / 2 / 100
+        L = 15 / 100
+        x *= R / 4
+        y *= R / 4
+        w *= R / 4 / (L + L)
+        fmt = "%.2f"
+        x, y, w = fmt % x, fmt % y, fmt % w
+        self.odoX["text"], self.odoY["text"], self.odoW["text"] = x, y, w
+    
+    def on_wheel(self, i, power, position, errors, speed):
+        self.motorMeters[i][0]["text"] = "%d%%" % (power * 100 / 127)
+        self.motorMeters[i][1]["text"] = "%.2f" % speed
+        self.encoderMeters[i][0]["text"] = position
+        self.encoderMeters[i][1]["text"] = errors
+
+if __name__ == "__main__":
+    BoardGui().run()

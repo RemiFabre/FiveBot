@@ -29,7 +29,7 @@ serial:
 	cu -l $(TTY) -s 2000000 --nostop
 
 control:
-	./Control.py $(TTY)
+	./boardgui.py $(TTY)
 
 %.hex: %.elf
 	$(ARDUINO_OBJCOPY) -O ihex $^ $@ -v
