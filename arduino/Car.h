@@ -37,6 +37,9 @@ class Car {
     
     /**
      * Sets the speed of each wheel to make the car move.
+     * @param vx speed forward/backward in rad/s
+     * @param vy speed sideways in rad/s
+     * @param w rotation speed in rad/s
      */
     void setSpeed(float vx, float vy, float w);
     
