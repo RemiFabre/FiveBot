@@ -35,7 +35,7 @@ Car::Car(): mMotors {
 ) {
     setupSerial();
     setupUpdateTimer();
-    setSpeed(10, 0, 0);
+    setSpeed(0, 0, 3*3.14);
 }
 
 void Car::setupSerial() {
@@ -76,9 +76,9 @@ void Car::updateOdometry() {
     w[3] = mEncoders[3].mPosition;
     mEncoders[3].mPosition = 0;
     // Update odometry
-    mPosition[0] += w[0] + w[1] - w[2] - w[3];
+    mPosition[0] += -w[0] - w[1] + w[2] + w[3];
     mPosition[1] += w[0] - w[1] - w[2] + w[3];
-    mOrientation += -w[0] + w[1] - w[2] + w[3];
+    mOrientation += w[0] + w[1] + w[2] + w[3];
     // Update motor speeds
     mWheels[0].regulatePower();
     mWheels[1].regulatePower();
@@ -90,8 +90,8 @@ void Car::updateOdometry() {
 
 void Car::setSpeed(float vx, float vy, float w) {
     mWheels[0].setTargetSpeed(-vx + vy + w);
-    mWheels[1].setTargetSpeed(vx + vy - w);
-    mWheels[2].setTargetSpeed(-vx + vy - w);
+    mWheels[1].setTargetSpeed(-vx - vy + w);
+    mWheels[2].setTargetSpeed(vx - vy + w);
     mWheels[3].setTargetSpeed(vx + vy + w);
 }
 
