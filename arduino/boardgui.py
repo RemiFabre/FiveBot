@@ -27,14 +27,15 @@ class BoardGui:
         self.create_motor_box()
         self.create_encoder_box()
         self.create_info_box()
+        self.create_key_bindings()
     
     def create_window(self):
-        root = tk.Tk()
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
+        self.root = tk.Tk()
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
         self.pad = { "padx": 5, "pady": 5 }
-        root.wm_title("FiveBot Control")
-        self.frame = tk.Frame(root)
+        self.root.wm_title("FiveBot Control")
+        self.frame = tk.Frame(self.root)
         self.frame.grid(**self.pad)
     
     def create_odometry_box(self):
@@ -110,6 +111,23 @@ class BoardGui:
         self.infoBoxText = tk.Listbox(infoBox, width=70, yscrollcommand=infoBoxScroll.set)
         self.infoBoxText.grid(row=0)
         infoBoxScroll.config(command=self.infoBoxText.yview)
+    
+    def create_key_bindings(self):
+        def forward(event):
+            self.com.send_speed(10, 0, 0, False)
+        def backward(event):
+            self.com.send_speed(-10, 0, 0, False)
+        def left(event):
+            self.com.send_speed(0, 0, 10, False)
+        def right(event):
+            self.com.send_speed(0, 0, -10, False)
+        def stop(event):
+            self.com.send_speed(0, 0, 0, False)
+        self.root.bind("<Z>", forward)
+        self.root.bind("<S>", backward)
+        self.root.bind("<Q>", left)
+        self.root.bind("<D>", right)
+        self.root.bind("<KeyRelease-Shift_L>", stop)
     
     def echo(self, msg):
         self.infoBoxText.insert(tk.END, "%d %s" % ((time.time() - self.startTime) * 1000, msg))
