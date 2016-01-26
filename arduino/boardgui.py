@@ -2,6 +2,7 @@
 
 import sys
 import threading
+import time
 import tkinter as tk
 
 import boardcom
@@ -13,6 +14,9 @@ class BoardGui:
         self.com = boardcom.BoardCom(sys.argv[1])
         self.com.on_odometry = self.on_odometry
         self.com.on_wheel = self.on_wheel
+        self.com.on_info = self.on_info
+        self.com.on_error = self.on_error
+        self.startTime = time.time()
         threading.Thread(target=self.com.run).start()
         tk.mainloop()
     
@@ -108,7 +112,7 @@ class BoardGui:
         infoBoxScroll.config(command=self.infoBoxText.yview)
     
     def echo(self, msg):
-        self.infoBoxText.insert(tk.END, msg)
+        self.infoBoxText.insert(tk.END, "%d %s" % ((time.time() - self.startTime) * 1000, msg))
         self.infoBoxText.see(tk.END)
     
     def on_odometry(self, x, y, w):
@@ -126,6 +130,12 @@ class BoardGui:
         self.motorMeters[i][1]["text"] = "%.2f" % speed
         self.encoderMeters[i][0]["text"] = position
         self.encoderMeters[i][1]["text"] = errors
+    
+    def on_info(self, msg):
+        self.echo(msg)
+    
+    def on_error(self, msg):
+        self.echo(msg)
     
     def set_speed(self):
         vx, vy, vz = [ float(entry.get()) for entry in self.speedCtrl ]

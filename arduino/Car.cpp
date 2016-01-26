@@ -8,8 +8,6 @@
 
 #define UPDATE_FREQUENCY (1000 / 12.8)
 
-static const char STX = 002, ETX = 003, ESC = 033;
-
 static Car* car;
 
 // long t1,t;
@@ -35,12 +33,7 @@ Car::Car(): mMotors {
 }, mOrientation(
     0
 ) {
-    setupSerial();
     setupUpdateTimer();
-}
-
-void Car::setupSerial() {
-    Serial.begin(2000000);
 }
 
 void Car::setupUpdateTimer() {
@@ -107,82 +100,50 @@ void Car::loop() {
     sleep_mode();
 }
 
-void Car::publishOdometry() const {
-    sendStart('o');
-    send(mPosition[0]);
-    send(mPosition[1]);
-    send(mOrientation);
-    sendEnd();
+void Car::publishOdometry() {
+    mCom.sendStart('o');
+    mCom.send(mPosition[0]);
+    mCom.send(mPosition[1]);
+    mCom.send(mOrientation);
+    mCom.sendEnd();
 }
 
-void Car::publishWheels() const {
-    sendStart('w');
+void Car::publishWheels() {
     for (int i = 0; i < 4; ++i) {
-        send(mMotors[i].getPower());
-        send(mEncoders[i].mPosition);
-        send(mEncoders[i].getErrorCount());
-        send(mWheels[i].getAngularSpeed());
+        mCom.sendStart('w');
+        mCom.send((char)i);
+        mCom.send(mMotors[i].getPower());
+        mCom.send(mEncoders[i].mPosition);
+        mCom.send(mEncoders[i].getErrorCount());
+        mCom.send(mWheels[i].getAngularSpeed());
+        mCom.sendEnd();
     }
-    sendEnd();
-}
-
-void Car::sendStart(char c) const {
-    Serial.write(STX);
-    Serial.write(c);
-}
-
-void Car::send(char c) const {
-    if (c == STX || c == ETX || c == ESC) {
-        Serial.write(ESC);
-        c ^= ESC;
-    }
-    Serial.write(c);
-}
-
-void Car::sendEnd() const {
-    Serial.write(ETX);
 }
 
 void Car::readCommand() {
-    if (canRead()) {
-        char cmd = readStart();
+    if (mCom.canRead()) {
+        mCom.sendASCII("waiting for start"); // XXX
+        char cmd = mCom.readStart();
+        mCom.sendASCII(cmd); // XXX
         if (cmd == 's') {
             float vx, vy, w;
             bool bypassPID;
-            read(vx);
-            read(vy);
-            read(w);
-            read(bypassPID);
+            mCom.read(vx);
+            mCom.read(vy);
+            mCom.read(w);
+            mCom.read(bypassPID);
+            mCom.sendASCII(vx); // XXX
+            mCom.sendASCII(vy); // XXX
+            mCom.sendASCII(w); // XXX
+            mCom.sendASCII(bypassPID); // XXX
             for (int i = 0; i < 4; ++i)
                 mWheels[i].mBypassPID = bypassPID;
             setSpeed(vx, vy, w);
         }
-        readEnd();
+        mCom.sendASCII("waiting for end"); // XXX
+        mCom.readEnd();
+        mCom.sendASCII("end"); // XXX
     }
-}
-
-bool Car::canRead() const {
-    return Serial.available() > 0;
-}
-
-char Car::readStart() const {
-    while (read() != STX) {}
-    return read();
-}
-
-char Car::read() const {
-    while (not canRead()) {}
-    char c = Serial.read();
-    if (c == ESC) {
-        while (not canRead()) {}
-        c = Serial.read();
-        c ^= ESC;
-    }
-    return c;
-}
-
-void Car::readEnd() const {
-    while (read() != ETX) {}
 }
 
 ISR(PCINT0_vect) {
