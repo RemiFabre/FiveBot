@@ -41,9 +41,6 @@ Car::Car(): mMotors {
 
 void Car::setupSerial() {
     Serial.begin(2000000);
-    while (Serial.peek() != 's') {}
-    if (Serial.readStringUntil('\n') == "setup")
-        Serial.print("setup\n");
 }
 
 void Car::setupUpdateTimer() {
@@ -143,7 +140,7 @@ void Car::send(char c) const {
 }
 
 void Car::sendEnd() const {
-    Serial.write('\n');
+    Serial.write(ETX);
 }
 
 void Car::readCommand() {
