@@ -8,6 +8,8 @@
 
 #define UPDATE_FREQUENCY (1000 / 12.8)
 
+static const char STX = 002, ETX = 003, ESC = 033;
+
 static Car* car;
 
 // long t1,t;
@@ -39,6 +41,9 @@ Car::Car(): mMotors {
 
 void Car::setupSerial() {
     Serial.begin(2000000);
+    while (Serial.peek() != 's') {}
+    if (Serial.readStringUntil('\n') == "setup")
+        Serial.print("setup\n");
 }
 
 void Car::setupUpdateTimer() {
@@ -50,10 +55,6 @@ void Car::setupUpdateTimer() {
     TCCR2B = _BV(CS22) | _BV(CS21) | _BV(CS20);
     // Set the delay to 12.8ms (OCR2A * prescaler / F_CPU)
     OCR2A = 200;
-}
-
-void Car::timerLoop() {
-    updateOdometry();
 }
 
 void Car::updateOdometry() {
@@ -94,7 +95,7 @@ void Car::setSpeed(float vx, float vy, float w) {
     mWheels[3].setTargetSpeed(vx + vy + w);
 }
 
-void Car::mainLoop() {
+void Car::loop() {
     // Transmit the state from time to time
     static int skip = 0;
     skip = (skip + 1) % 255;
@@ -104,46 +105,87 @@ void Car::mainLoop() {
         // Serial.println(t);
     }
     // Read commands sent to the board
-    Car::readSerial();
+    readCommand();
     // Let the ATmega sleep until the next interrupt
     sleep_mode();
 }
 
 void Car::publishOdometry() const {
-    Serial.write('o');
-    Serial.write((uint8_t*)mPosition, sizeof(mPosition));
-    Serial.write((uint8_t*)&mOrientation, sizeof(mOrientation));
-    Serial.println();
+    sendStart('o');
+    send(mPosition[0]);
+    send(mPosition[1]);
+    send(mOrientation);
+    sendEnd();
 }
 
 void Car::publishWheels() const {
-    Serial.write('w');
+    sendStart('w');
     for (int i = 0; i < 4; ++i) {
-        const int msg[] = {
-            mMotors[i].getPower(),
-            mEncoders[i].mPosition,
-            mEncoders[i].getErrorCount(),
-        };
-        const float speed = mWheels[i].getAngularSpeed();
-        Serial.write((uint8_t*)msg, sizeof(msg));
-        Serial.write((uint8_t*)&speed, sizeof(speed));
+        send(mMotors[i].getPower());
+        send(mEncoders[i].mPosition);
+        send(mEncoders[i].getErrorCount());
+        send(mWheels[i].getAngularSpeed());
     }
-    Serial.println();
+    sendEnd();
 }
 
-void Car::readSerial() {
-    if (Serial.available()) {
-        const char cmd = Serial.read();
-        float speeds[3];
+void Car::sendStart(char c) const {
+    Serial.write(STX);
+    Serial.write(c);
+}
+
+void Car::send(char c) const {
+    if (c == STX || c == ETX || c == ESC) {
+        Serial.write(ESC);
+        c ^= ESC;
+    }
+    Serial.write(c);
+}
+
+void Car::sendEnd() const {
+    Serial.write('\n');
+}
+
+void Car::readCommand() {
+    if (canRead()) {
+        char cmd = readStart();
         if (cmd == 's') {
-            Serial.readBytes((char*)speeds, sizeof(speeds));
-            const bool bypassPID = Serial.read();
+            float vx, vy, w;
+            bool bypassPID;
+            read(vx);
+            read(vy);
+            read(w);
+            read(bypassPID);
             for (int i = 0; i < 4; ++i)
                 mWheels[i].mBypassPID = bypassPID;
-            setSpeed(speeds[0], speeds[1], speeds[2]);
+            setSpeed(vx, vy, w);
         }
-        while (Serial.read() != '\n') {}
+        readEnd();
     }
+}
+
+bool Car::canRead() const {
+    return Serial.available() > 0;
+}
+
+char Car::readStart() const {
+    while (read() != STX) {}
+    return read();
+}
+
+char Car::read() const {
+    while (not canRead()) {}
+    char c = Serial.read();
+    if (c == ESC) {
+        while (not canRead()) {}
+        c = Serial.read();
+        c ^= ESC;
+    }
+    return c;
+}
+
+void Car::readEnd() const {
+    while (read() != ETX) {}
 }
 
 ISR(PCINT0_vect) {
@@ -163,14 +205,13 @@ ISR(PCINT2_vect) {
 }
 
 ISR(TIMER2_COMPB_vect) {
-    car->timerLoop();
+    car->updateOdometry();
 }
 
 void setup() {
     car = new Car;
-    Serial.println(__FUNCTION__);
 }
 
 void loop() {
-    car->mainLoop();
+    car->loop();
 }

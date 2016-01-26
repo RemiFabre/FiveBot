@@ -15,7 +15,7 @@ class Car {
     float mOrientation;
     
     /**
-     * Sets up the Serial com.
+     * Sets up the serial com.
      */
     void setupSerial();
     
@@ -25,13 +25,9 @@ class Car {
     void setupUpdateTimer();
     
     /**
+     * Updates the encoders and the odometry of the car.
      * Loop function called at a regular interval from a timer interrupt vector.
      * Must be quick.
-     */
-    void timerLoop();
-    
-    /**
-     * Updates the encoders and the odometry of the car.
      */
     void updateOdometry();
     
@@ -43,15 +39,72 @@ class Car {
      */
     void setSpeed(float vx, float vy, float w);
     
+    /**
+     * Sends the start of a command to the serial port.
+     * @param cmd Id of the command.
+     */
+    void sendStart(char cmd) const;
+    
+    /**
+     * Sends escaped data to the serial Port.
+     * @param data Byte to send.
+     */
+    void send(char data) const;
+    
+    /**
+     * Sends escaped data to the serial Port.
+     * @param data Data to send.
+     */
+    template<typename T>
+    void send(const T& data) const {
+        for (size_t i = 0; i < sizeof(data); ++i)
+            send(((const char*)&data)[i]);
+    }
+    
+    /**
+     * Sends the command delimiter to the serial port.
+     */
+    void sendEnd() const;
+    
+    /**
+     * Tells if input is available on the serial com.
+     */
+    bool canRead() const;
+    
+    /**
+     * Reads the start byte of a command and its id on the serial com.
+     */
+    char readStart() const;
+    
+    /**
+     * Reads an escaped byte from the serial com.
+     */
+    char read() const;
+    
+    /**
+     * Reads escaped data from the serial com.
+     * @param Block of data to save input into.
+     */
+    template<typename T>
+    void read(T& data) const {
+        for (size_t i = 0; i < sizeof(data); ++i)
+            ((char*)&data)[i] = Serial.read();
+    }
+    
+    /**
+     * Reads the end byte of a command on the serial com.
+     */
+    void readEnd() const;
+    
     public:
     
     Car();
     
     /**
      * Loop function called by the main program.
-     * Can be slow and can use the Serial com.
+     * Can be slow and can use the serial com.
      */
-    void mainLoop();
+    void loop();
     
     /**
      * Publishes the position and orientation of the car.
@@ -64,9 +117,9 @@ class Car {
     void publishWheels() const;
     
     /**
-     * Interprets the commands given on the Serial com.
+     * Interprets the commands given on the serial com.
      */
-    void readSerial();
+    void readCommand();
     
     /**
      * Interrupt vectors need to call private functions.

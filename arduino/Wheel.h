@@ -73,5 +73,5 @@ class Wheel {
     /**
      * Should the PID be bypassed.
      */
-    volatile bool mBypassPID;
+    bool mBypassPID;
 };
