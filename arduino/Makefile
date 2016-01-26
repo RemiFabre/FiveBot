@@ -42,5 +42,6 @@ $(TARGET).elf: $(OBJ)
 
 clean:
 	rm -rf $(TARGET).hex $(TARGET).elf *.o
+	rm -rf __pycache__
 
 .PHONY: build upload serial clean
