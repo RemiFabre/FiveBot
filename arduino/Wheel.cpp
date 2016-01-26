@@ -13,7 +13,7 @@ Wheel::Wheel(Motor& motor, RotaryEncoder& encoder, float updateFrequency):
     mMotor(motor),
     mEncoder(encoder),
     mUpdateFrequency(updateFrequency),
-    mKP(50), mKI(1), mKD(0),
+    mKP(15), mKI(1), mKD(0),
     mPositionDeltas{0},
     mPositionDeltaIndex(0),
     mPositionDeltaSum(0),
