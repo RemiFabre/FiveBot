@@ -122,9 +122,7 @@ void Car::publishWheels() {
 
 void Car::readCommand() {
     if (mCom.canRead()) {
-        mCom.sendASCII("waiting for start"); // XXX
         char cmd = mCom.readStart();
-        mCom.sendASCII(cmd); // XXX
         if (cmd == 's') {
             float vx, vy, w;
             bool bypassPID;
@@ -132,17 +130,11 @@ void Car::readCommand() {
             mCom.read(vy);
             mCom.read(w);
             mCom.read(bypassPID);
-            mCom.sendASCII(vx); // XXX
-            mCom.sendASCII(vy); // XXX
-            mCom.sendASCII(w); // XXX
-            mCom.sendASCII(bypassPID); // XXX
             for (int i = 0; i < 4; ++i)
                 mWheels[i].mBypassPID = bypassPID;
             setSpeed(vx, vy, w);
         }
-        mCom.sendASCII("waiting for end"); // XXX
         mCom.readEnd();
-        mCom.sendASCII("end"); // XXX
     }
 }
 
