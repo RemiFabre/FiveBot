@@ -4,12 +4,40 @@ import sys
 import threading
 import time
 import tkinter as tk
+from math import cos, sin, pi
+
+## Q = (2*Pi/3072)*(mUF/8)
+Q = 0.01997
+Q_inv = 50.067
+
 
 import boardcom
+
+
+class Car:
+    def __init__(self, x, y, w):
+        self.x = x
+        self.y = y
+        self.w = w
+    
+    def update_position(self, x, y, w):
+
+        R = 9.4 / 2 / 100
+        L = 15 / 100
+        w *= R / 4 / (L + L) / 2900 *2*pi # 2900 units in a cycle
+        x *= R * Q / 4
+        y *= R * Q / 4
+
+        x,y = x*cos(w)+y*sin(w), -x*sin(w)+y*cos(w)
+
+        self.x += x
+        self.y += y
+        self.w += w    
 
 class BoardGui:
     
     def run(self):
+        self.car = Car(0,0,0)
         self.create_gui()
         self.com = boardcom.BoardCom(sys.argv[1])
         self.com.on_odometry = self.on_odometry
@@ -134,13 +162,9 @@ class BoardGui:
         self.infoBoxText.see(tk.END)
     
     def on_odometry(self, x, y, w):
-        R = 9.4 / 2 / 100
-        L = 15 / 100
-        x *= R / 4
-        y *= R / 4
-        w *= R / 4 / (L + L) / 2900 # 2900 units in a cycle
+        self.car.update_position(x,y,w);
         fmt = "%.2f"
-        x, y, w = fmt % x, fmt % y, fmt % w
+        x, y, w = fmt % self.car.x, fmt % self.car.y, fmt % self.car.w
         self.odoX["text"], self.odoY["text"], self.odoW["text"] = x, y, w
     
     def on_wheel(self, i, power, position, errors, speed):

@@ -106,6 +106,9 @@ void Car::publishOdometry() {
     mCom.send(mPosition[1]);
     mCom.send(mOrientation);
     mCom.sendEnd();
+    mPosition[0] = 0;
+    mPosition[1] = 0;
+    mOrientation = 0;
 }
 
 void Car::publishWheels() {
