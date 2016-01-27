@@ -26,7 +26,7 @@ upload: build
 	$(A_AVRDUDE) -D -U flash:w:$(TARGET).hex:i
 
 serial:
-	cu -l $(TTY) -s 2000000 --nostop
+	cu -l $(TTY) -s 115200 --nostop
 
 control:
 	./boardgui.py $(TTY)
