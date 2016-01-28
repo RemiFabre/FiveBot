@@ -2,6 +2,7 @@ import math
 import serial
 import struct
 import threading
+import time
 
 STX = 2
 ETX = 3
@@ -12,12 +13,13 @@ class Event(list):
         for f in self:
             f(*args, **kwargs)
 
-class FiveBot:
+class Car:
     
     encoder_increments_per_turns = 3072
     wheel_radius = .047
     half_lengths = [ .15, .15 ]
     magic = 2900
+    max_speed = 2 * (2 * math.pi)
     
     on_odometry = Event() # (x, y, a)
     on_wheel = Event() # (i, power, position, errors, speed)
@@ -27,6 +29,8 @@ class FiveBot:
     def __init__(self, tty, x = 0, y = 0, a = 0):
         self.com = serial.Serial(tty, baudrate=115200, stopbits=1)
         self.x, self.y, self.a = x, y, a
+        self.on_info.append(print)
+        self.on_error.append(print)
         self.thread = threading.Thread(target=self.__parse_commands_forever)
         self.thread.start()
     
@@ -85,7 +89,57 @@ class FiveBot:
         self.on_odometry(self.x, self.y, self.a)
     
     def set_speed(self, vx, vy, w, bypass_pid):
-        self.vx = vx
-        self.vy = vy
-        self.w = w
+        self.vx = min(max(vx, -self.max_speed), self.max_speed)
+        self.vy = min(max(vy, -self.max_speed), self.max_speed)
+        self.w = min(max(w, -self.max_speed), self.max_speed)
         self.__send_command("s", "<fff?", vx, vy, w, bypass_pid)
+
+class PositionController:
+    
+    error = [ 0, 0, 0 ]
+    max_error = 10
+    last_odometry = None
+    update_interval = 0.02
+    last_update_time = 0
+    
+    def __init__(self, car, p, i, d):
+        self.car = car
+        self.set_pid(p, i, d)
+    
+    def set_pid(self, p, i, d):
+        self.p, self.i, self.d = p, i, d
+    
+    def set_target(self, x, y, a):
+        self.target = [ x, y, a ]
+        self.error = [ 0, 0, 0 ]
+    
+    def start(self):
+        self.car.on_odometry.append(self.__on_odometry)
+    
+    def stop(self):
+        self.car.on_odometry.remove(self.__on_odometry)
+    
+    def __on_odometry(self, x, y, a):
+        try:
+            now = time.time()
+            if now - self.last_update_time < self.update_interval:
+                return
+            self.last_update_time = now
+            odometry = [ x, y, a ]
+            print(odometry) # XXX
+            if self.last_odometry is None:
+                self.last_odometry = odometry
+            error = [ self.target[k] - odometry[k] for k in range(3) ]
+            cmd = [ 0, 0, 0 ]
+            for k in range(3):
+                    p = self.p * error[k]
+                    self.error[k] = min(max(self.error[k] + error[k], -self.max_error), self.max_error)
+                    i = self.i * self.error[k]
+                    d = self.d * self.error[k]
+                    cmd[k] = p + i + d
+            self.last_odometry = odometry
+            self.car.set_speed(*cmd, bypass_pid=False)
+            print(cmd) # XXX
+            print() # XXX
+        except Exception as e:
+            print(e)

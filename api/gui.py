@@ -9,7 +9,7 @@ import fivebot
 class BoardGui:
     
     def run(self, tty):
-        self.car = fivebot.FiveBot(tty)
+        self.car = fivebot.Car(tty)
         self.create_gui()
         self.car.on_odometry.append(self.on_odometry)
         self.car.on_wheel.append(self.on_wheel)
