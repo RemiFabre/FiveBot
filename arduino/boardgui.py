@@ -6,9 +6,14 @@ import time
 import tkinter as tk
 from math import cos, sin, pi
 
+
+update_frequency = 1/0.0128          #fréquence de mise à jour
+
 ## Q = (2*Pi/3072)*(mUF/8)
-Q = 0.01997
-Q_inv = 50.067
+Q = (2*pi/3072)
+Q_inv = 1/Q
+R = .094 / 2
+L = .15
 
 
 import boardcom
@@ -21,14 +26,11 @@ class Car:
         self.w = w
     
     def update_position(self, x, y, w):
-
-        R = 9.4 / 2 / 100
-        L = 15 / 100
         w *= R / 4 / (L + L) / 2900 *2*pi # 2900 units in a cycle
         x *= R * Q / 4
         y *= R * Q / 4
 
-        x,y = x*cos(w)+y*sin(w), -x*sin(w)+y*cos(w)
+        x,y = x*cos(self.w)+y*sin(self.w), -x*sin(self.w)+y*cos(self.w)
 
         self.x += x
         self.y += y
@@ -163,7 +165,7 @@ class BoardGui:
     
     def on_odometry(self, x, y, w):
         self.car.update_position(x,y,w);
-        fmt = "%.2f"
+        fmt = "%.3f"
         x, y, w = fmt % self.car.x, fmt % self.car.y, fmt % self.car.w
         self.odoX["text"], self.odoY["text"], self.odoW["text"] = x, y, w
     
