@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-
+import math
 import serial
 import struct
 import threading
@@ -8,10 +7,17 @@ STX = 2
 ETX = 3
 ESC = 27
 
-class BoardCom:
+class FiveBot:
     
-    def __init__(self, tty):
+    encoder_increments_per_turns = 3072
+    wheel_radius = .047
+    half_lengths = [ .15, .15 ]
+    magic = 2900
+    
+    def __init__(self, tty, x = 0, y = 0, w = 0):
         self.com = serial.Serial(tty, baudrate=115200, stopbits=1)
+        self.x, self.y, self.w = x, y, w
+        threading.Thread(target=self.run).start()
     
     def run(self):
         while True:
@@ -21,7 +27,7 @@ class BoardCom:
         cmd, packet = self.read_packet()
         try:
             if cmd == "o":
-                self.on_odometry(*struct.unpack("<fff", packet))
+                self.on_odometry_raw(*struct.unpack("<fff", packet))
             elif cmd == "w":
                 self.on_wheel(*struct.unpack("<bbhHf", packet))
             elif cmd == "i":
@@ -55,6 +61,18 @@ class BoardCom:
         data += [ ETX ]
         self.com.write(bytes(data))
     
+    def on_odometry_raw(self, dx, dy, dw):
+        dw *= 2 * math.pi * self.wheel_radius / 4 / sum(self.half_lengths) / self.magic
+        dx *= self.wheel_radius * 2 * math.pi / self.encoder_increments_per_turns / 4
+        dy *= self.wheel_radius * 2 * math.pi / self.encoder_increments_per_turns / 4
+        c = math.cos(self.w + dw / 2)
+        s = math.sin(self.w + dw / 2)
+        dx, dy = c * dx + s * dy, -s * dx + c * dy
+        self.x += dx
+        self.y += dy
+        self.w += dw
+        self.on_odometry(self.x, self.y, self.w)
+    
     def on_odometry(self, x, y, w):
         pass
     
@@ -67,5 +85,5 @@ class BoardCom:
     def on_error(self, msg):
         pass
     
-    def send_speed(self, vx, vy, w, bypass_pid):
+    def set_speed(self, vx, vy, w, bypass_pid):
         self.send_command("s", "<fff?", vx, vy, w, bypass_pid)

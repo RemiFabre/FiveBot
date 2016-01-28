@@ -1,53 +1,21 @@
 #!/usr/bin/env python3
 
 import sys
-import threading
 import time
 import tkinter as tk
-from math import cos, sin, pi
 
-
-update_frequency = 1/0.0128          #fréquence de mise à jour
-
-## Q = (2*Pi/3072)*(mUF/8)
-Q = (2*pi/3072)
-Q_inv = 1/Q
-R = .094 / 2
-L = .15
-
-
-import boardcom
-
-
-class Car:
-    def __init__(self, x, y, w):
-        self.x = x
-        self.y = y
-        self.w = w
-    
-    def update_position(self, x, y, w):
-        w *= R / 4 / (L + L) / 2900 *2*pi # 2900 units in a cycle
-        x *= R * Q / 4
-        y *= R * Q / 4
-
-        x,y = x*cos(self.w)+y*sin(self.w), -x*sin(self.w)+y*cos(self.w)
-
-        self.x += x
-        self.y += y
-        self.w += w    
+import fivebot
 
 class BoardGui:
     
     def run(self):
-        self.car = Car(0,0,0)
+        self.car = fivebot.FiveBot(sys.argv[1])
         self.create_gui()
-        self.com = boardcom.BoardCom(sys.argv[1])
-        self.com.on_odometry = self.on_odometry
-        self.com.on_wheel = self.on_wheel
-        self.com.on_info = self.on_info
-        self.com.on_error = self.on_error
+        self.car.on_odometry = self.on_odometry
+        self.car.on_wheel = self.on_wheel
+        self.car.on_info = self.on_info
+        self.car.on_error = self.on_error
         self.startTime = time.time()
-        threading.Thread(target=self.com.run).start()
         tk.mainloop()
     
     def create_gui(self):
@@ -145,19 +113,19 @@ class BoardGui:
     def create_key_bindings(self):
         self.speed = 2
         def forward(event):
-            self.com.send_speed(self.speed, 0, 0, False)
+            self.car.set_speed(self.speed, 0, 0, False)
         def backward(event):
-            self.com.send_speed(-self.speed, 0, 0, False)
+            self.car.set_speed(-self.speed, 0, 0, False)
         def left_turn(event):
-            self.com.send_speed(0, 0, self.speed, False)
+            self.car.set_speed(0, 0, self.speed, False)
         def right_turn(event):
-            self.com.send_speed(0, 0, -self.speed, False)
+            self.car.set_speed(0, 0, -self.speed, False)
         def left_move(event):
-            self.com.send_speed(0, self.speed, 0, False)
+            self.car.set_speed(0, self.speed, 0, False)
         def right_move(event):
-            self.com.send_speed(0, -self.speed, 0, False)
+            self.car.set_speed(0, -self.speed, 0, False)
         def stop(event):
-            self.com.send_speed(0, 0, 0, False)
+            self.car.set_speed(0, 0, 0, False)
         self.root.bind("<Z>", forward)
         self.root.bind("<S>", backward)
         self.root.bind("<Q>", left_move)
@@ -171,7 +139,6 @@ class BoardGui:
         self.infoBoxText.see(tk.END)
     
     def on_odometry(self, x, y, w):
-        self.car.update_position(x,y,w);
         fmt = "%.3f"
         x, y, w = fmt % self.car.x, fmt % self.car.y, fmt % self.car.w
         self.odoX["text"], self.odoY["text"], self.odoW["text"] = x, y, w
@@ -190,7 +157,7 @@ class BoardGui:
     
     def set_speed(self):
         vx, vy, vz = [ float(entry.get()) for entry in self.speedCtrl ]
-        self.com.send_speed(vx, vy, vz, not self.pid.get())
+        self.car.set_speed(vx, vy, vz, not self.pid.get())
 
 if __name__ == "__main__":
     BoardGui().run()
