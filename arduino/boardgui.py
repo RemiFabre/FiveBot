@@ -143,20 +143,27 @@ class BoardGui:
         infoBoxScroll.config(command=self.infoBoxText.yview)
     
     def create_key_bindings(self):
+        self.speed = 2
         def forward(event):
-            self.com.send_speed(10, 0, 0, False)
+            self.com.send_speed(self.speed, 0, 0, False)
         def backward(event):
-            self.com.send_speed(-10, 0, 0, False)
-        def left(event):
-            self.com.send_speed(0, 0, 10, False)
-        def right(event):
-            self.com.send_speed(0, 0, -10, False)
+            self.com.send_speed(-self.speed, 0, 0, False)
+        def left_turn(event):
+            self.com.send_speed(0, 0, self.speed, False)
+        def right_turn(event):
+            self.com.send_speed(0, 0, -self.speed, False)
+        def left_move(event):
+            self.com.send_speed(0, self.speed, 0, False)
+        def right_move(event):
+            self.com.send_speed(0, -self.speed, 0, False)
         def stop(event):
             self.com.send_speed(0, 0, 0, False)
         self.root.bind("<Z>", forward)
         self.root.bind("<S>", backward)
-        self.root.bind("<Q>", left)
-        self.root.bind("<D>", right)
+        self.root.bind("<Q>", left_move)
+        self.root.bind("<D>", right_move)
+        self.root.bind("<A>", left_turn)
+        self.root.bind("<E>", right_turn)
         self.root.bind("<KeyRelease-Shift_L>", stop)
     
     def echo(self, msg):
