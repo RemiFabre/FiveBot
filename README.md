@@ -29,10 +29,24 @@ Le code qui s'exécute sur le microprocesseur du robot gère le relevé des enco
 
 (2) remet à zéro le buffer utilisé en (1) et (3) remet à zéro le buffer utilisé en (2).
 
-Quand le processeur n'est pas en train de gérer une interruption pour (1) et (2), il transmet via la liaison série les données permettant au Raspberry Pi d'effectuer (3), et gère les éventuelles commandes arrivant dans l'autre sens.
+Quand le processeur n'est pas en train de gérer une interruption pour (1) et (2), il transmet via la liaison série les données permettant d'effectuer (3), et gère les éventuelles commandes arrivant dans l'autre sens.
+
+Commandes pour compiler le code, le téléverser sur la carte et afficher l'état du robot :
+
+    cd arduino/
+    make
+
+Différents commandes sont disponibles dans le Makefile en cas de problème bas-niveau.
 
 ## API
 
 La bilbiothèque receptionne les données transmises régulièrement par la carte via un protocole binaire simple. Chaque trame dans un sens comme dans l'autre est composée d'un octet de start, d'un octet désignant la commande, de données échappées si besoin et d'un octet de stop. Elle traite certaines données brutes relevées par la carte et les convertit pour une utilisation externe. Elle permet aussi de contrôler le robot en vitesse et en position.
 
-Une interface graphique permet de visualiser toutes les informations transmises par la voiture en temps réel à des fins de débuggage.
+La bilbiothèque peut être utilisée en l'important :
+
+    from fivebot import Car, PositionController
+
+Une interface graphique permet de visualiser toutes les informations transmises par la voiture en temps réel à des fins de débuggage. Elle est appelée à la fin du téléversement du code Arduino (`make control`) mais peut aussi être lancée dans son dossier :
+
+    cd api/
+    ./gui.py
