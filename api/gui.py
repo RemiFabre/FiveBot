@@ -8,13 +8,13 @@ import fivebot
 
 class BoardGui:
     
-    def run(self):
-        self.car = fivebot.FiveBot(sys.argv[1])
+    def run(self, tty):
+        self.car = fivebot.FiveBot(tty)
         self.create_gui()
-        self.car.on_odometry = self.on_odometry
-        self.car.on_wheel = self.on_wheel
-        self.car.on_info = self.on_info
-        self.car.on_error = self.on_error
+        self.car.on_odometry.append(self.on_odometry)
+        self.car.on_wheel.append(self.on_wheel)
+        self.car.on_info.append(self.on_info)
+        self.car.on_error.append(self.on_error)
         self.startTime = time.time()
         tk.mainloop()
     
@@ -41,16 +41,16 @@ class BoardGui:
         odoBox.grid(row=0, column=0, **self.pad)
         self.odoX = tk.Label(odoBox, text="X", **self.pad)
         self.odoY = tk.Label(odoBox, text="Y", **self.pad)
-        self.odoW = tk.Label(odoBox, text="Angle", **self.pad)
+        self.odoA = tk.Label(odoBox, text="Angle", **self.pad)
         self.odoX.grid(row=0, column=0)
         self.odoY.grid(row=0, column=1)
-        self.odoW.grid(row=0, column=2)
+        self.odoA.grid(row=0, column=2)
         self.odoX = tk.Label(odoBox, width=8, **self.pad)
         self.odoY = tk.Label(odoBox, width=8, **self.pad)
-        self.odoW = tk.Label(odoBox, width=8, **self.pad)
+        self.odoA = tk.Label(odoBox, width=8, **self.pad)
         self.odoX.grid(row=1, column=0)
         self.odoY.grid(row=1, column=1)
-        self.odoW.grid(row=1, column=2)
+        self.odoA.grid(row=1, column=2)
     
     def create_speed_box(self):
         speedBox = tk.LabelFrame(self.frame, text="Speed", **self.pad)
@@ -138,10 +138,10 @@ class BoardGui:
         self.infoBoxText.insert(tk.END, "%d %s" % ((time.time() - self.startTime) * 1000, msg))
         self.infoBoxText.see(tk.END)
     
-    def on_odometry(self, x, y, w):
+    def on_odometry(self, x, y, a):
         fmt = "%.3f"
-        x, y, w = fmt % self.car.x, fmt % self.car.y, fmt % self.car.w
-        self.odoX["text"], self.odoY["text"], self.odoW["text"] = x, y, w
+        x, y, a = fmt % self.car.x, fmt % self.car.y, fmt % self.car.a
+        self.odoX["text"], self.odoY["text"], self.odoA["text"] = x, y, a
     
     def on_wheel(self, i, power, position, errors, speed):
         self.motorMeters[i][0]["text"] = "%d%%" % (power * 100 / 127)
@@ -160,4 +160,5 @@ class BoardGui:
         self.car.set_speed(vx, vy, vz, not self.pid.get())
 
 if __name__ == "__main__":
-    BoardGui().run()
+    tty = sys.argv[1]
+    BoardGui().run(tty)
