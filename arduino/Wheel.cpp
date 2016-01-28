@@ -48,7 +48,7 @@ void Wheel::setTargetSpeed(float speed) {
 void Wheel::regulatePower() {
     if (mBypassPID)
         return;
-    const int error = mPositionDeltaSumTarget - mPositionDeltaSum;
+    const int error = mPositionDeltaSum - mPositionDeltaSumTarget;
     mPositionDeltaSumIntegratedError += error;
     mPositionDeltaSumIntegratedError =
         mPositionDeltaSumIntegratedError > (127 << FIXED_POINT_SHIFT) ? (127 << FIXED_POINT_SHIFT) :
@@ -57,7 +57,7 @@ void Wheel::regulatePower() {
     const int p = mKP * error;
     const int i = mKI * mPositionDeltaSumIntegratedError;
     const int d = mKD * mPositionDeltas[mPositionDeltaIndex];
-    const int output = -(p + i - d) >> FIXED_POINT_SHIFT;
+    const int output = (p + i + d) >> FIXED_POINT_SHIFT;
     mMotor.setPower(
         output > 127 ? 127 :
         output < -127 ? -127 :
