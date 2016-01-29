@@ -4,19 +4,23 @@ import sys
 import time
 import tkinter as tk
 
-import fivebot
+from fivebot import Car
 
-class BoardGui:
+class DebugGui:
     
-    def run(self, tty):
-        self.car = fivebot.Car(tty)
+    def run(self, car):
+        self.car = car
+        self.startTime = time.time()
         self.create_gui()
         self.car.on_odometry.append(self.on_odometry)
         self.car.on_wheel.append(self.on_wheel)
         self.car.on_info.append(self.on_info)
         self.car.on_error.append(self.on_error)
-        self.startTime = time.time()
         tk.mainloop()
+        self.car.on_odometry.remove(self.on_odometry)
+        self.car.on_wheel.remove(self.on_wheel)
+        self.car.on_info.remove(self.on_info)
+        self.car.on_error.remove(self.on_error)
     
     def create_gui(self):
         self.create_window()
@@ -161,4 +165,5 @@ class BoardGui:
 
 if __name__ == "__main__":
     tty = sys.argv[1]
-    BoardGui().run(tty)
+    car = Car(tty)
+    DebugGui().run(car)

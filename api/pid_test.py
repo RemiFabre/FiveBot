@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-import fivebot
+from fivebot import Car, PositionController
+from gui import DebugGui
 
-car = fivebot.Car("/dev/ttyUSB0")
-pid = fivebot.PositionController(car, 5, .5, .8)
+car = Car("/dev/ttyUSB0")
+gui = DebugGui().run(car)
+pid = PositionController(car, 5, .5, .8)
 pid.set_target(1, 0, 0)
 pid.start()
