@@ -35,10 +35,13 @@ class Car {
      * @param w rotation speed in rad/s
      */
     void setSpeed(float vx, float vy, float w);
+
     
     public:
     
     Car();
+
+    void test();
     
     /**
      * Loop function called by the main program.

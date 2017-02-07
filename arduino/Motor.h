@@ -7,6 +7,7 @@ class Motor {
     unsigned char
         mDirection, ///< State of the direction pin
         mPower; ///< Current power between 0 and 255.
+    unsigned char mMotorID; // [1 to 4]
     
     public:
     
@@ -15,7 +16,7 @@ class Motor {
      * @param directionPin Pin used to choose between forward and reverse.
      * @param powerPin Pin used to give power to the motor.
      */
-    Motor(unsigned char directionPin, unsigned char powerPin);
+    Motor(unsigned char directionPin, unsigned char powerPin, unsigned char motorID);
     
     /**
      * Sets the power applied to the motor.

@@ -5,6 +5,7 @@
 #include <Arduino.h>
 
 #include "Car.h"
+#include "Motor.h"
 
 #define UPDATE_FREQUENCY (1000 / 12.8)
 
@@ -13,10 +14,11 @@ static Car* car;
 // long t1,t;
 
 Car::Car(): mMotors {
-    Motor( 4,  5),
-    Motor( 8,  9),
-    Motor(11, 10),
-    Motor( 7,  6),
+  // Sigh, the motor ID convention decided by the manual was not followed. 1<->4 and 2<->3
+    Motor( 4,  5, 4),
+    Motor( 8,  9, 3),
+    Motor(11, 10, 2),
+    Motor( 7,  6, 1),
 }, mEncoders {
     RotaryEncoder(DDRD, PD2, PD3, PCIE2, PCMSK2, PCINT18, PCINT19), // Pins 2 & 3.
     RotaryEncoder(DDRC, PC0, PC1, PCIE1, PCMSK1, PCINT8, PCINT9), // Pins A0 & A1.
@@ -37,14 +39,30 @@ Car::Car(): mMotors {
 }
 
 void Car::setupUpdateTimer() {
-    // Enable timer 2 compare match B interrupts
-    TIMSK2 = _BV(OCIE2B);
-    // Set timer 2 to CTC mode (Clear Timer on Compare) with OCR2A
-    TCCR2A = _BV(WGM21);
-    // Enable the timer with prescaler set to 1024
-    TCCR2B = _BV(CS22) | _BV(CS21) | _BV(CS20);
-    // Set the delay to 12.8ms (OCR2A * prescaler / F_CPU)
-    OCR2A = 200;
+  
+  // Setting timer1 with the following configuration: outputs A and B are used with the minimum prescaler (1). The duty-cycle of the PWM A is controlled by OCR1A (range [0, 255], motors 2 and 3, still noisy). The duty-cycle of the PWM B is controlled by OCR1B (range [0, 255]). Note that timer1 is 16bits while timers 0 and 2 are 8 bits.
+  TCCR1A = _BV(COM1A1) | _BV(COM1B1) | _BV(WGM21) | _BV(WGM20);
+  TCCR1B = _BV(CS10);
+
+  // Same with timer0. Motors 1 and 4, noiseless.
+  TCCR0A = _BV(COM0A1) | _BV(COM0B1) | _BV(WGM21) | _BV(WGM20);
+  TCCR0B = _BV(CS00);
+
+  //OCR0A = 255; // Motor 1
+  //OCR1B = 200; // Motor 2
+  //OCR1A = 0; // Motor 3
+  //OCR0B = 200; // Motor 4
+
+  
+  // Enable timer 2 compare match B interrupts
+  TIMSK2 = _BV(OCIE2B);
+  // Set timer 2 to CTC mode (Clear Timer on Compare) with OCR2A
+  TCCR2A = _BV(WGM21);
+  // Enable the timer with prescaler set to 1024
+  TCCR2B = _BV(CS22) | _BV(CS21) | _BV(CS20);
+  // Set the delay to 12.8ms (OCR2A * prescaler / F_CPU)
+  OCR2A = 200;
+  
 }
 
 void Car::updateOdometry() {
@@ -141,6 +159,11 @@ void Car::readCommand() {
     }
 }
 
+void Car::test() {
+  Motor m = mMotors[0];
+  m.setPower(200);
+}
+
 ISR(PCINT0_vect) {
     const unsigned char port = PINB;
     car->mEncoders[3].update(port);
@@ -166,5 +189,6 @@ void setup() {
 }
 
 void loop() {
-    car->loop();
+  car->loop();
+  //  car->test();
 }
