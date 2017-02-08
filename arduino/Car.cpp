@@ -40,10 +40,10 @@ Car::Car(): mMotors {
 
 void Car::setupUpdateTimer() {
   
-  // Setting timer1 with the following configuration: outputs A and B are used with the minimum prescaler (1). The duty-cycle of the PWM A is controlled by OCR1A (range [0, 255], motors 2 and 3, still noisy). The duty-cycle of the PWM B is controlled by OCR1B (range [0, 255]). Note that timer1 is 16bits while timers 0 and 2 are 8 bits.
-  TCCR1A = _BV(COM1A1) | _BV(COM1B1) | _BV(WGM21) | _BV(WGM20);
-  TCCR1B = _BV(CS10);
-
+  // Setting timer1 with the following configuration: outputs A and B are used with the minimum prescaler (1). The duty-cycle of the PWM A is controlled by OCR1A (range [0, 255], motors 2 and 3, still noisy). The duty-cycle of the PWM B is controlled by OCR1B (range [0, 255]). Note that timer1 is 16bits while timers 0 and 2 are 8 bits. The WGM bit configuration of this timer sets the TOP value tu 0xff so it behaves like a 255 timer.
+  TCCR1A = _BV(COM0A1) | _BV(COM0B1) | _BV(WGM11) | _BV(WGM10);
+  TCCR1B = _BV(WGM12) | _BV(CS10);
+    
   // Same with timer0. Motors 1 and 4, noiseless.
   TCCR0A = _BV(COM0A1) | _BV(COM0B1) | _BV(WGM21) | _BV(WGM20);
   TCCR0B = _BV(CS00);

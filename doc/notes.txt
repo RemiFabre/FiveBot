@@ -1,0 +1,2 @@
+A good read :
+https://www.arduino.cc/en/Tutorial/SecretsOfArduinoPWM
